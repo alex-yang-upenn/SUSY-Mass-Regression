@@ -1,0 +1,11 @@
+.venv
+__pycache__
+
+PyROOT_Tutorial
+
+MassRegressionData/*
+!MassRegressionData/test_qX_qWY_qqqlv_X200_Y30.root
+
+DirectSummation_Naive_Graphs/*
+!DirectSummation_Naive_Graphs/test_qX_qWY_qqqlv_X200_Y30.png
+!DirectSummation_Naive_Graphs/test_qX_qWY_qqqlv_X200_Y30_verify.png
