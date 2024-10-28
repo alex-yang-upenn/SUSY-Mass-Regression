@@ -18,7 +18,7 @@ def vector_sum_particles_list(tree, branches, truthM, truthID, MET_ids=[]):
         Phi = list(getattr(tree, name + "Phi"))
         for j in range(len(Id)):
             if (Id[j] in MET_ids):
-                Eta[j] = 0
+                continue
             mass = truthM[truthID.index(Id[j])]
             vec = create_lorentz_vector(Pt[j], Eta[j], Phi[j], mass)
             sum_vec += vec
@@ -38,6 +38,20 @@ def vector_sum_particles(tree, branches):
     
     return sum_vec
 
+def extract_features_particles_list(tree, branches, truthM, truthID, MET_ids=[]):
+    features = []
+    for name in branches:
+        Id = list(getattr(tree, name + "Id"))
+        Pt = list(getattr(tree, name + "Pt"))
+        Eta = list(getattr(tree, name + "Eta"))
+        Phi = list(getattr(tree, name + "Phi"))
+        for j in range(len(Id)):
+            if (Id[j] in MET_ids):
+                continue
+            mass = truthM[truthID.index(Id[j])]
+            features += [Pt[j], Eta[j], Phi[j], mass]
+    
+    return features
 
 def create_1var_histogram_with_marker(
     data,
