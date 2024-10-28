@@ -3,7 +3,10 @@ __pycache__
 
 PyROOT_Tutorial
 
-MassRegressionData/*
+MassRegressionData/**
+!MassRegressionData/.gitkeep
 
-Preprocessed_Data/Test/*
-Preprocessed_Data/Train/*
+Preprocessed_Data/Test/**
+!Preprocessed_Data/Test/.gitkeep
+Preprocessed_Data/Train/**
+!Preprocessed_Data/Train/.gitkeep
