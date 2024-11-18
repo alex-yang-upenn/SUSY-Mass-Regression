@@ -6,7 +6,5 @@ PyROOT_Tutorial
 MassRegressionData/**
 !MassRegressionData/.gitkeep
 
-Preprocessed_Data/Test/**
-!Preprocessed_Data/Test/.gitkeep
-Preprocessed_Data/Train/**
-!Preprocessed_Data/Train/.gitkeep
+Preprocessed_Data/*.npz
+Preprocessed_Data/*.pkl

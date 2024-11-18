@@ -1,8 +1,0 @@
-{
-    "model_checkpoint": "DNN_checkpoints/best_model_20241028_110340.keras",
-    "metrics": {
-        "test_mse": 2889.385009765625,
-        "test_mae": 45.12599563598633,
-        "test_mape": 15.54548168182373
-    }
-}
