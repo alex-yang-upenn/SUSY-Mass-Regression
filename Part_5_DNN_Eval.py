@@ -11,9 +11,6 @@ Author:
 Date:
 License:
 """
-    
-
-
 import ROOT
 import numpy as np
 from sklearn.preprocessing import StandardScaler
@@ -42,7 +39,7 @@ random.seed(42)
 
 def main():
     rootFiles = random.sample(os.listdir(DATA_DIRECTORY), 5)
-
+        
     for name in rootFiles:
         # Access ROOT file
         print(f"Processing file {name}")

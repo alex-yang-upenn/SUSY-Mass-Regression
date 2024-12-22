@@ -90,6 +90,17 @@ def single_entry_extract_features(tree, branches, truthM, truthID, MET_ids=[], c
     
     return features
 
+def reformat_data(X):
+    """
+    Reformat the sample dataset for GNN input. Completes MET to a full particle (0 Eta, 0 Mass), then
+    reshapes to 2D samples (4 Features x 4 Particles).
+    """
+    X_graphical = np.zeros((len(X), 16), dtype=np.float32)
+    X_graphical[:, :12] = X[:, :12]
+    X_graphical[:, 14] = X[:, 13]
+    X_graphical = X_graphical.reshape(len(X), 4, 4)
+    return X_graphical
+
 def create_1var_histogram_with_marker(data, data_label, marker, marker_label, title, x_label, filename):
     """
     Creates a histogram from one dataset with a vertical marker line and saves it to a file. Uses 200 bins

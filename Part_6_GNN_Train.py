@@ -1,16 +1,19 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 import keras_tuner as kt
 import numpy as np
 import tensorflow as tf
 
 import datetime
 import json
-import os
 
 from tf_utils import GraphEmbeddings
+from utils import reformat_data
 
 
 # General Parameters
-DATA_DIRECTORY = "raw_data"
+DATA_DIRECTORY = "pre-processed_data"
 TRAINING_DIRECTORY = "GNN_Checkpoints"
 RUN_ID = datetime.datetime.now().strftime('%m-%d_%H:%M')
 # Model Parameters
@@ -48,6 +51,8 @@ def build_model():
     return model
 
 def main():
+    print("GPUs Available: ", tf.config.list_physical_devices("GPU"))
+    
     # Load in data
     train = np.load(os.path.join(DATA_DIRECTORY, "train.npz"))
     val = np.load(os.path.join(DATA_DIRECTORY, "val.npz"))
@@ -55,13 +60,6 @@ def main():
     X_train, y_train = train['X'], train['y_eta']
     X_val, y_val = val['X'], val['y_eta']
     X_test, y_test = test['X'], test['y_eta']
-    
-    def reformat_data(X):
-        X_graphical = np.zeros((len(X), 16), dtype=np.float32)
-        X_graphical[:, :12] = X[:, :12]
-        X_graphical[:, 14] = X[:, 13]
-        X_graphical = X_graphical.reshape(len(X), 4, 4)
-        return X_graphical
     
     # Complete MET to a full "particle" with eta = 0 and mass = 0
     X_graphical_train = reformat_data(X_train)
@@ -102,6 +100,7 @@ def main():
             os.path.join(TRAINING_DIRECTORY, f"best_model_log_{RUN_ID}.csv")
         )
     ]
+
     
     model.fit(
         X_graphical_train,
