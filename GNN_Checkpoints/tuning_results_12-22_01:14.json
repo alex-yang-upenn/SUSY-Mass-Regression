@@ -1,0 +1,8 @@
+{
+    "best_model": "GNN_Checkpoints/checkpoint_12-22_01:14.keras",
+    "best_model_metrics": {
+        "test_mse": 0.7405329942703247,
+        "test_mae": 0.649453341960907,
+        "test_mape": 374.3306579589844
+    }
+}
