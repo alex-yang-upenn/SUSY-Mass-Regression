@@ -1,10 +1,12 @@
 .venv
 __pycache__
 
-PyROOT_Tutorial
+PyROOT_Tutorial/
 
-MassRegressionData/**
-!MassRegressionData/.gitkeep
+raw_data/**
+!raw_data/.gitkeep
 
-Preprocessed_Data/*.npz
-Preprocessed_Data/*.pkl
+pre-processed_data/scaler.pkl
+pre-processed_data/test.npz
+pre-processed_data/train.npz
+pre-processed_data/val.npz

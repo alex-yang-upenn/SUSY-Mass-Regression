@@ -1,0 +1,23 @@
+{
+    "best_model": "DNN_checkpoints/best_model_12-01_13:32.keras",
+    "best_model_metrics": {
+        "test_mse": 0.579416811466217,
+        "test_mae": 0.5742969512939453,
+        "test_mape": 346.4433288574219
+    },
+    "best_hyperparameters": {
+        "units_1": 256,
+        "kernel_init_1": "he_normal",
+        "dropout_1": 0.0,
+        "units_2": 128,
+        "kernel_init_2": "he_normal",
+        "dropout_2": 0.1,
+        "use_third_layer": true,
+        "learning_rate": 0.00013074793481226152,
+        "units_3": 56,
+        "kernel_init_3": "glorot_uniform",
+        "dropout_3": 0.2
+    },
+    "search_space_summary": null,
+    "results_summary": null
+}
