@@ -129,9 +129,11 @@ def main():
         naive_mass = np.array(naive_mass, dtype=np.float32)
         naiveMseEta = np.mean(np.square(etaTarget))
         naiveMseMass = np.mean(np.square(naive_mass - trueMass))
+        naiveMapeMass = np.mean(np.abs((trueMass - naive_mass) / trueMass)) * 100.0
         currFileResults["Naive Sum"] = {}
         currFileResults["Naive Sum"]["Eta_MSE"] = float(naiveMseEta)
         currFileResults["Naive Sum"]["Mass_MSE"] = float(naiveMseMass)
+        currFileResults["Naive Sum"]["Mass_MAPE"] = float(naiveMapeMass)
 
         for name, model in eval_models.items():
             currFileResults[name] = {} 
@@ -142,7 +144,9 @@ def main():
 
             outputs[name + "_mass"] = np.array(outputs[name + "_mass"], dtype=np.float32)
             mseMass = np.mean(np.square(outputs[name + "_mass"] - trueMass))
+            mapeMass = np.mean(np.abs((trueMass - outputs[name + "_mass"]) / trueMass)) * 100.0
             currFileResults[name]["Mass_MSE"] = float(mseMass)
+            currFileResults[name]["Mass_MAPE"] = float(mapeMass)
 
             utils.create_2var_histogram_with_marker(
                 data1=outputs[name + "_mass"],

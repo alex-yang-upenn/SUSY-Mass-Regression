@@ -22,13 +22,21 @@ class GraphEmbeddings(tf.keras.layers.Layer):
         self.f_o_units = f_o_units
 
         self.f_R = tf.keras.Sequential([
-            tf.keras.layers.Dense(units, activation="relu") 
+            layer
             for units in self.f_r_units
+            for layer in [
+                tf.keras.layers.Dense(units, activation="relu"),
+                tf.keras.layers.BatchNormalization()
+            ]
         ])
-        
+
         self.f_O = tf.keras.Sequential([
-            tf.keras.layers.Dense(units, activation="relu") 
+            layer
             for units in self.f_o_units
+            for layer in [
+                tf.keras.layers.Dense(units, activation="relu"),
+                tf.keras.layers.BatchNormalization()
+            ]
         ])
 
     def build(self, input_shape):

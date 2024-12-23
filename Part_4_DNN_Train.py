@@ -30,7 +30,7 @@ RUN_ID = "12-01_13:32"  # datetime.datetime.now().strftime('%m-%d_%H:%M')
 # Model parameters
 INPUT_SHAPE = 14
 OUTPUT_SHAPE = 1
-BATCHSIZE = 32
+BATCHSIZE = 128
 # Keras Tuner parameters
 MAX_TRIALS = 30         
 EPOCHS_PER_TRIAL = 15
@@ -53,10 +53,10 @@ def build_model(hp):
     # First layer
     x = tf.keras.layers.Dense(
         units=hp.Int('units_1', min_value=32, max_value=256, step=32),
-        kernel_initializer=hp.Choice('kernel_init_1', ['he_normal', 'glorot_uniform'])
+        kernel_initializer=hp.Choice('kernel_init_1', ['he_normal', 'glorot_uniform']),
+        activation="relu"
     )(inputs)
     x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.ReLU()(x)
     x = tf.keras.layers.Dropout(
         hp.Float('dropout_1', min_value=0.0, max_value=0.5, step=0.1)
     )(x)
@@ -64,10 +64,10 @@ def build_model(hp):
     # Second layer
     x = tf.keras.layers.Dense(
         units=hp.Int('units_2', min_value=16, max_value=128, step=16),
-        kernel_initializer=hp.Choice('kernel_init_2', ['he_normal', 'glorot_uniform'])
+        kernel_initializer=hp.Choice('kernel_init_2', ['he_normal', 'glorot_uniform']),
+        activation="relu"
     )(x)
     x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.ReLU()(x)
     x = tf.keras.layers.Dropout(
         hp.Float('dropout_2', min_value=0.0, max_value=0.3, step=0.1)
     )(x)
@@ -76,10 +76,10 @@ def build_model(hp):
     if hp.Boolean('use_third_layer'):
         x = tf.keras.layers.Dense(
             units=hp.Int('units_3', min_value=8, max_value=64, step=8),
-            kernel_initializer=hp.Choice('kernel_init_3', ['he_normal', 'glorot_uniform'])
+            kernel_initializer=hp.Choice('kernel_init_3', ['he_normal', 'glorot_uniform']),
+            activation="relu"
         )(x)
         x = tf.keras.layers.BatchNormalization()(x)
-        x = tf.keras.layers.ReLU()(x)
         x = tf.keras.layers.Dropout(
             hp.Float('dropout_3', min_value=0.0, max_value=0.3, step=0.1)
         )(x)
@@ -148,7 +148,6 @@ def main():
     # Get best hyperparameters, build and train best model
     best_hp = tuner.get_best_hyperparameters(1)[0]
     best_model = build_model(best_hp)
-    
     
     best_checkpoint_path = os.path.join(TRAINING_DIRECTORY, f"best_model_{RUN_ID}.keras")
     best_model_callbacks = callbacks + [

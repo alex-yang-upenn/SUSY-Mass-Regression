@@ -20,28 +20,57 @@ RUN_ID = datetime.datetime.now().strftime('%m-%d_%H:%M')
 N_FEATURES = 4
 BATCHSIZE = 128
 OUTPUT_SHAPE = 1
+MAX_TRIALS = 30
 EPOCHS_PER_TRIAL = 15
 
 os.makedirs(TRAINING_DIRECTORY, exist_ok=True)
 
 
-def build_model():
+def build_model(hp):
     input = tf.keras.Input(shape=(N_FEATURES, None), dtype=tf.float32)
 
     # Reduce graph to vector embedding
-    O_Bar = GraphEmbeddings()(input)
+    hp_fr_dense1 = hp.Int('fr_dense1', min_value=32, max_value=128, step=32)
+    hp_fr_dense2 = hp.Int('fr_dense2', min_value=16, max_value=64, step=16)
+    hp_fr_dense3 = hp.Int('fr_dense3', min_value=8, max_value=32, step=8)
+    hp_fo_dense1 = hp.Int('fo_dense1', min_value=32, max_value=128, step=32)
+    hp_fo_dense2 = hp.Int('fo_dense2', min_value=16, max_value=64, step=16)
+    hp_fo_dense3 = hp.Int('fo_dense3', min_value=8, max_value=32, step=8)
+    O_Bar = GraphEmbeddings(
+        f_r_dense=(hp_fr_dense1, hp_fr_dense2, hp_fr_dense3),
+        f_o_dense=(hp_fo_dense1, hp_fo_dense2, hp_fo_dense3)
+    )(input)
     
     # Trainable function phi_C to compute MET Eta from vector embeddings 
-    dense1 = tf.keras.layers.Dense(64, activation="relu")(O_Bar)
+    hp_phi_C_dense1 = hp.Int('phi_C_dense1', min_value=32, max_value=128, step=32)
+    dense1 = tf.keras.layers.Dense(
+        dense=hp_phi_C_dense1,
+        activation="relu"
+    )(O_Bar)
     norm1 = tf.keras.layers.BatchNormalization()(dense1)
-    dense2 = tf.keras.layers.Dense(32, activation="relu")(norm1)
-    dense3 = tf.keras.layers.Dense(10, activation="relu")(dense2)
-    output = tf.keras.layers.Dense(1)(dense3)
+
+    hp_phi_C_dense2 = hp.Int('phi_C_dense2', min_value=16, max_value=64, step=16)
+    dense2 = tf.keras.layers.Dense(
+        dense=hp_phi_C_dense2,
+        activation="relu"
+    )(norm1)
+    norm2 = tf.keras.layers.BatchNormalization()(dense2)
+
+    hp_phi_C_dense3 = hp.Int('phi_C_dense3', min_value=8, max_value=32, step=8)
+    dense3 = tf.keras.layers.Dense(
+        dense=hp_phi_C_dense3,
+        activation="relu"
+    )(norm2)
+    norm3 = tf.keras.layers.BatchNormalization()(dense3)
+
+    output = tf.keras.layers.Dense(1)(norm3)
     
     # Create and compile model
     model = tf.keras.Model(inputs=input, outputs=output)
     
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
+    hp_learning_rate = hp.Float('learning_rate', min_value=1e-5, max_value=1e-3, sampling='log')
+    optimizer = tf.keras.optimizers.Adam(learning_rate=hp_learning_rate)
+
     model.compile(
         optimizer=optimizer,
         loss='mse',
@@ -66,14 +95,16 @@ def main():
     X_graphical_val = reformat_data(X_val)
     X_graphical_test = reformat_data(X_test)
 
-    model = build_model()
+    # Define the tuner
+    tuner = kt.BayesianOptimization(
+        build_model,
+        objective='val_loss',
+        max_trials=MAX_TRIALS,
+        directory=os.path.join(TRAINING_DIRECTORY, f'tuning_{RUN_ID}'),
+        project_name='eta_prediction'
+    )
 
-    checkpoint_path = os.path.join(TRAINING_DIRECTORY, f"checkpoint_{RUN_ID}.keras")
-    best_model_path = os.path.join(TRAINING_DIRECTORY, f"best_model_{RUN_ID}.keras")
-    if os.path.exists(checkpoint_path):
-        print(f"Resuming from checkpoint: {checkpoint_path}")
-        model = tf.keras.models.load_model(checkpoint_path, custom_objects={"GraphEmbeddings": GraphEmbeddings})
-
+    # Define callbacks for each trial
     callbacks = [
         tf.keras.callbacks.EarlyStopping(
             monitor='val_loss',
@@ -81,48 +112,65 @@ def main():
             restore_best_weights=True
         ),
         tf.keras.callbacks.ReduceLROnPlateau(
-            monitor="val_loss",
+            monitor='val_loss',
             factor=0.5,
             patience=2
-        ),
-        tf.keras.callbacks.ModelCheckpoint(
-            filepath=checkpoint_path,
-            save_weights_only=False,
-            save_best_only=False,
-            save_freq="epoch"
-        ),
-        tf.keras.callbacks.ModelCheckpoint(
-            filepath=best_model_path,
-            monitor="val_loss",
-            save_best_only=True
-        ),
-        tf.keras.callbacks.CSVLogger(
-            os.path.join(TRAINING_DIRECTORY, f"best_model_log_{RUN_ID}.csv")
         )
     ]
 
-    
-    model.fit(
-        X_graphical_train,
-        y_train,
+    search_space_summary = tuner.search_space_summary(extended=True)
+
+    # Search for best hyperparameters
+    tuner.search(
+        X_graphical_train, y_train,
         validation_data=(X_graphical_val, y_val),
         epochs=EPOCHS_PER_TRIAL,
-        batch_size=BATCHSIZE,
-        callbacks=callbacks,
+        batchsize=BATCHSIZE,
+        callbacks=callbacks
+    )
+
+    results_summary = tuner.results_summary(30)
+
+    # Get best hyperparameters, build and train best model
+    best_hp = tuner.get_best_hyperparameters(1)[0]
+    best_model = build_model(best_hp)
+
+    best_checkpoint_path = os.path.join(TRAINING_DIRECTORY, f"best_model_{RUN_ID}.keras")
+    best_model_callbacks = callbacks + [
+            tf.keras.callbacks.ModelCheckpoint(
+                filepath=best_checkpoint_path,
+                monitor='val_loss',
+                save_best_only=True
+            ),
+            tf.keras.callbacks.CSVLogger(
+                os.path.join(TRAINING_DIRECTORY, f"best_model_log_{RUN_ID}.csv")
+            )
+    ]
+
+    best_model.fit(
+        X_graphical_train, y_train,
+        validation_data=(X_graphical_val, y_val),
+        epochs=EPOCHS_PER_TRIAL,
+        batchsize=BATCHSIZE,
+        callbacks=best_model_callbacks
     )
 
     # Evaluate on test set
-    test_results = model.evaluate(X_graphical_test, y_test, verbose=1)
+    test_results = best_model.evaluate(X_graphical_test, y_test, verbose=1)
 
-    # Save results
     results_dict = {
-        "best_model": checkpoint_path,
+        "best_model": best_checkpoint_path,
         "best_model_metrics": {
             "test_mse": float(test_results[0]),
             "test_mae": float(test_results[1]),
             "test_mape": float(test_results[2]),
-        }
+        },
+        "best_hyperparameters": best_hp.values,
+        "search_space_summary": search_space_summary,
+        "results_summary": results_summary
     }
+
+    # Save results
     with open(os.path.join(TRAINING_DIRECTORY, f"tuning_results_{RUN_ID}.json"), 'w') as f:
         json.dump(results_dict, f, indent=4)
 
