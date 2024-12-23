@@ -21,7 +21,6 @@ class GraphEmbeddings(tf.keras.layers.Layer):
         self.f_r_units = f_r_units
         self.f_o_units = f_o_units
 
-    def build(self, input_shape):       
         self.f_R = tf.keras.Sequential([
             tf.keras.layers.Dense(units, activation="relu") 
             for units in self.f_r_units
@@ -31,6 +30,13 @@ class GraphEmbeddings(tf.keras.layers.Layer):
             tf.keras.layers.Dense(units, activation="relu") 
             for units in self.f_o_units
         ])
+
+    def build(self, input_shape):
+        P = input_shape[1]
+        
+        self.f_R.build((None, None, 2 * P))
+        
+        self.f_O.build((None, None, P + self.f_r_units[-1]))
         
         super().build(input_shape)
 
