@@ -19,7 +19,7 @@ import numpy as np
 import os
 import pickle
 
-import utils
+import ROOT_utils
 
 
 # Parameters
@@ -51,10 +51,10 @@ def InspectData(X, y, y_eta, filename, plotTitle):
     indices = np.random.choice(len(y), size=500, replace=False)
     noticeableErrors = 0
     for i in indices:
-        q_1 = utils.create_lorentz_vector(X[i][0], X[i][1], X[i][2], X[i][3])
-        q_2 = utils.create_lorentz_vector(X[i][4], X[i][5], X[i][6], X[i][7])
-        Lept = utils.create_lorentz_vector(X[i][8], X[i][9], X[i][10], X[i][11])
-        v = utils.create_lorentz_vector(X[i][12], y_eta[i], X[i][13], 0)
+        q_1 = ROOT_utils.create_lorentz_vector(X[i][0], X[i][1], X[i][2], X[i][3])
+        q_2 = ROOT_utils.create_lorentz_vector(X[i][4], X[i][5], X[i][6], X[i][7])
+        Lept = ROOT_utils.create_lorentz_vector(X[i][8], X[i][9], X[i][10], X[i][11])
+        v = ROOT_utils.create_lorentz_vector(X[i][12], y_eta[i], X[i][13], 0)
         X_particle = q_1 + q_2 + Lept + v
         mass = X_particle.M()
         if not math.isclose(mass, y[i], rel_tol=1e-5):
