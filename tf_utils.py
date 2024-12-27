@@ -50,7 +50,7 @@ class GraphEmbeddings(tf.keras.layers.Layer):
 
     @tf.function(reduce_retracing=True)
     def call(self, x):
-        n_particles = tf.shape(x)[1]
+        n_particles = tf.shape(x)[2]
         rr, rr_t, rs = self._create_interaction_matrices(n_particles)
 
         # Build B_pp

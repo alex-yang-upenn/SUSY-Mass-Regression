@@ -11,6 +11,7 @@ import pickle
 import random
 import re
 
+import ROOT_utils
 from tf_utils import GraphEmbeddings
 import utils
 
@@ -21,11 +22,11 @@ TARGET_BRANCHES = ["P1"]
 UNDETECTED_PARTICLES = [12]
 
 DNN_TRAINING_DIRECTORY = "DNN_Checkpoints"
-DNN_MODEL_CHECKPOINT = "best_model_12-01_13:32.keras"
+DNN_MODEL_CHECKPOINT = "best_model_12-23_22:28.keras"
 DNN_IMAGE_DIRECTORY = "DNN_Masked_Graphs"
 
 GNN_TRAINING_DIRECTORY = "GNN_Checkpoints"
-GNN_MODEL_CHECKPOINT = "best_model_12-22_01:14.keras"
+GNN_MODEL_CHECKPOINT = "best_model_12-24_22:03.keras"
 GNN_IMAGE_DIRECTORY = "GNN_Masked_Graphs"
 
 os.makedirs(DNN_IMAGE_DIRECTORY, exist_ok=True)
@@ -35,11 +36,14 @@ random.seed(42)
 
 
 def DNN_Transform(x):
-    x.copy()[:, 4:8] = 0.0
-    return x
+    transformed_x = x.copy()
+    transformed_x[:, 4:8] = 0.0
+    return transformed_x
 
 def GNN_Transform(x):
-    return np.delete(x.copy(), [4, 5, 6, 7], axis=1)
+    transformed_x = utils.reformat_data(x)
+    transformed_x = np.delete(transformed_x, 1, axis=2)
+    return transformed_x
 
 def main():
     rootFiles = random.sample(os.listdir(DATA_DIRECTORY), 5)
@@ -62,7 +66,7 @@ def main():
                 os.path.join(GNN_TRAINING_DIRECTORY, GNN_MODEL_CHECKPOINT),
                 custom_objects={"GraphEmbeddings": GraphEmbeddings}
             ),
-            "input_transform": lambda x: utils.reformat_data(x),
+            "input_transform": GNN_Transform,
             "image_directory": GNN_IMAGE_DIRECTORY
         }
     }
@@ -82,7 +86,7 @@ def main():
         inputs, etaTarget = [], []
         for entryNum in range(0, test_tree.GetEntries()):
             test_tree.GetEntry(entryNum)
-            features = utils.single_entry_extract_features(
+            features = ROOT_utils.single_entry_extract_features(
                 tree=test_tree,
                 branches=TARGET_BRANCHES,
                 truthM=truthM,
@@ -91,10 +95,7 @@ def main():
                 clip_eta=True
             )
             if len(features) > 0:
-                original_met = utils.create_lorentz_vector(getattr(test_tree, "METPt"), 0, getattr(test_tree, "METPhi"), 0)
-                q_2_masked = utils.create_lorentz_vector(features[4], 0, features[6], 0)
-                new_met = original_met + q_2_masked
-                inputs.append(features + [new_met.Pt(), new_met.Phi()])
+                inputs.append(features + [getattr(test_tree, "METPt"), getattr(test_tree, "METPhi")])
                 etaTarget.append(getattr(test_tree, "METEta"))
 
         trueMass = np.float32(getattr(test_tree, "T1M"))
@@ -118,17 +119,16 @@ def main():
         unscaledInputs = scaler.inverse_transform(inputs)
         naive_mass = []
         for i in range(len(unscaledInputs)):
-            q_1 = utils.create_lorentz_vector(unscaledInputs[i][0], unscaledInputs[i][1], unscaledInputs[i][2], unscaledInputs[i][3])
-            q_2 = utils.create_lorentz_vector(unscaledInputs[i][4], unscaledInputs[i][5], unscaledInputs[i][6], unscaledInputs[i][7])
-            Lept = utils.create_lorentz_vector(unscaledInputs[i][8], unscaledInputs[i][9], unscaledInputs[i][10], unscaledInputs[i][11])
-            NaiveMET = utils.create_lorentz_vector(unscaledInputs[i][12], 0, unscaledInputs[i][13], 0)
+            q_1 = ROOT_utils.create_lorentz_vector(unscaledInputs[i][0], unscaledInputs[i][1], unscaledInputs[i][2], unscaledInputs[i][3])
+            Lept = ROOT_utils.create_lorentz_vector(unscaledInputs[i][8], unscaledInputs[i][9], unscaledInputs[i][10], unscaledInputs[i][11])
+            NaiveMET = ROOT_utils.create_lorentz_vector(unscaledInputs[i][12], 0, unscaledInputs[i][13], 0)
 
-            Naive_X_Particle = q_1 + q_2 + Lept + NaiveMET
+            Naive_X_Particle = q_1 + Lept + NaiveMET
             naive_mass.append(Naive_X_Particle.M())
 
             for name, model in eval_models.items():
-                met = utils.create_lorentz_vector(unscaledInputs[i][12], outputs[name + "_eta"][i], unscaledInputs[i][13], 0)
-                X_particle = q_1 + q_2 + Lept + met
+                met = ROOT_utils.create_lorentz_vector(unscaledInputs[i][12], outputs[name + "_eta"][i], unscaledInputs[i][13], 0)
+                X_particle = q_1 + Lept + met
                 outputs[name + "_mass"].append(X_particle.M())
 
         # Logging and displaying results
