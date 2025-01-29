@@ -1,33 +1,31 @@
+
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 import matplotlib.pyplot as plt
 import numpy as np
 
-
-def reformat_data(X):
-    """
-    Reformat the sample dataset for GNN input. Completes MET to a full particle (0 Eta, 0 Mass), then
-    reshapes to 2D samples (4 Features x 4 Particles).
-    """
-    X_graphical = np.zeros((len(X), 16), dtype=np.float32)
-    X_graphical[:, :12] = X[:, :12]
-    X_graphical[:, 14] = X[:, 13]
-    X_graphical = X_graphical.reshape(len(X), 4, 4)
-    return X_graphical
 
 def create_1var_histogram_with_marker(data, data_label, marker, marker_label, title, x_label, filename):
     """
     Creates a histogram from one dataset with a vertical marker line and saves it to a file. Uses 200 bins
     """
-    plt.style.use('default')
+    plt.style.use("default")
 
     # Process data
     npData = np.array(data)
+
     max_val = npData.max()
+    mean_val = np.mean(npData)
+    std_val = np.std(npData)
+    median_val = np.median(npData)
 
     # Create figure 
-    fig, ax = plt.subplots(figsize=(12, 6))
-    n, bins, patches = ax.hist(npData, bins=200, range=(0, max_val), edgecolor='black')
-    ax.axvline(x=marker, color='red', linestyle='--', linewidth=2)
-      
+    fig, ax = plt.subplots(figsize=(12, 6), dpi=300)
+    n, bins, patches = ax.hist(npData, bins=200, range=(0, max_val), edgecolor="black", alpha=0.5)
+    ax.axvline(x=marker, color="red", linestyle="--", linewidth=2)
+    ax.axvline(x=mean_val, color="orange", linestyle=":", linewidth=2)   
+    ax.axvline(x=mean_val+std_val, color="yellow", linestyle=":", linewidth=2)
+    ax.axvline(x=mean_val-std_val, color="yellow", linestyle=":", linewidth=2)    
 
     # Add labels and format axes
     ax.set_title(title, fontsize=12)
@@ -38,8 +36,14 @@ def create_1var_histogram_with_marker(data, data_label, marker, marker_label, ti
 
     ax.set_ylabel("Frequency", fontsize=10)
     
-    ax.grid(True, linestyle='--', alpha=0.7)
-    ax.legend([marker_label, data_label], fontsize=10)
+    legend_elements = [
+        Line2D([0], [0], color='red', linestyle='--', label=marker_label),
+        Patch(color="blue", label=data_label),
+        Line2D([0], [0], color="orange", linestyle=":", label=f"Mean: {mean_val:.2e}"),
+        Line2D([0], [0], color="yellow", linestyle=":", label=f"±1σ: {mean_val-std_val:.2e}, {mean_val+std_val:.2e}"),
+        Patch(color="none", label=f"Median: {median_val:.2e}"),
+    ]
+    ax.legend(handles=legend_elements, fontsize=10)
 
     plt.tight_layout()
     

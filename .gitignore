@@ -8,7 +8,8 @@ PyROOT_Tutorial/
 raw_data/**
 !raw_data/.gitkeep
 
-pre-processed_data/scaler.pkl
-pre-processed_data/test.npz
-pre-processed_data/train.npz
-pre-processed_data/val.npz
+processed_data/test/*
+processed_data/train/*
+processed_data/val/*
+
+old/*

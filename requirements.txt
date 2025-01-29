@@ -1,0 +1,5 @@
+keras_tuner
+matplotlib
+numpy
+tensorflow
+scikit-learn
