@@ -6,6 +6,7 @@ import pickle
 from sklearn.preprocessing import StandardScaler
 import sys
 import tensorflow as tf
+from tqdm import tqdm
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
@@ -14,7 +15,8 @@ from tf_utils import GraphEmbeddings
 
 # General Parameters
 DATA_DIRECTORY = os.path.join(os.path.dirname(SCRIPT_DIR), "processed_data")
-RUN_ID = datetime.datetime.now().strftime('%m-%d_%H:%M')
+CHECKPOINT_DIRECTORY = os.path.join(SCRIPT_DIR, "checkpoints")
+RUN_ID = 1 # datetime.datetime.now().strftime('%m-%d_%H:%M')
 # Model Hyperparameters
 N_FEATURES = 6
 BATCHSIZE = 128
@@ -96,10 +98,9 @@ def main():
     X_vals, y_vals = [], []
     X_tests, y_tests = [], []
 
-    for name in os.listdir(os.path.join(DATA_DIRECTORY, "test")):
-        if name[-4:] != ".npz":
-            continue
-        
+    files = [f for f in os.listdir(os.path.join(DATA_DIRECTORY, "test")) if f.endswith(".npz")]
+    
+    for name in tqdm(files, desc="Loading data"):
         train = np.load(os.path.join(DATA_DIRECTORY, "train", name))
         val = np.load(os.path.join(DATA_DIRECTORY, "val", name))
         test = np.load(os.path.join(DATA_DIRECTORY, "test", name))
@@ -144,26 +145,29 @@ def main():
     X_val_scaled = X_val_scaled.transpose(0, 2, 1)
     X_test_scaled = X_test_scaled.transpose(0, 2, 1)
 
-    # Define callbacks for each trial
-    best_checkpoint_path = os.path.join(SCRIPT_DIR, f"checkpoints/best_model_{RUN_ID}.keras")
+    # Define callbacks
     callbacks = [
+        tf.keras.callbacks.BackupAndRestore(
+            backup_dir=os.path.join(CHECKPOINT_DIRECTORY, f"backup_{RUN_ID}")
+        ),
         tf.keras.callbacks.EarlyStopping(
             monitor='val_loss',
-            patience=4,
+            patience=6,
             restore_best_weights=True
         ),
         tf.keras.callbacks.ReduceLROnPlateau(
             monitor='val_loss',
             factor=0.5,
-            patience=2
+            patience=3
         ),
         tf.keras.callbacks.ModelCheckpoint(
-            filepath=best_checkpoint_path,
+            filepath=os.path.join(CHECKPOINT_DIRECTORY, f"best_model_{RUN_ID}.keras"),
             monitor='val_loss',
             save_best_only=True
         ),
         tf.keras.callbacks.CSVLogger(
-            os.path.join(SCRIPT_DIR, f"checkpoints/log_{RUN_ID}.csv")
+            os.path.join(CHECKPOINT_DIRECTORY, f"log_{RUN_ID}.csv"),
+            append=True
         )
     ]
 
@@ -180,7 +184,6 @@ def main():
     test_results = model.evaluate(X_test_scaled, y_test_scaled, verbose=1)
 
     results_dict = {
-        "model": best_checkpoint_path,
         "best_model_metrics": {
             "test_mse": float(test_results[0]),
             "test_mae": float(test_results[1]),
@@ -188,7 +191,7 @@ def main():
         }
     }
 
-    with open(os.path.join(SCRIPT_DIR, f"results_{RUN_ID}.json"), 'w') as f:
+    with open(os.path.join(CHECKPOINT_DIRECTORY, f"results_{RUN_ID}.json"), 'w') as f:
         json.dump(results_dict, f, indent=4)
 
 

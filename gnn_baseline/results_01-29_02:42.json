@@ -1,8 +1,0 @@
-{
-    "model": "/home/chuhua/SUSY-Mass-Regression/gnn_baseline/checkpoints/best_model_01-29_02:42.keras",
-    "best_model_metrics": {
-        "test_mse": 1.2484889030456543,
-        "test_mae": 0.9034705758094788,
-        "test_mape": 314.5158996582031
-    }
-}
