@@ -11,6 +11,7 @@ from tqdm import tqdm
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 from tf_utils import GraphEmbeddings
+from utils import scale_data
 
 
 # General Parameters
@@ -39,18 +40,6 @@ def normalize_data(train, scalable_particle_features):
         scalers.append(scaler)
 
     return scaled_train, scalers
-
-def scale_data(data, scalers, scalable_particle_features):
-    scaled_data = data.copy()
-    for scaler, idx in zip(scalers, scalable_particle_features):
-        values = data[:, :, idx]
-        values_flat = values.reshape(-1, 1)
-
-        scaled_values = scaler.transform(values_flat)
-
-        scaled_data[:, :, idx] = scaled_values.reshape(values.shape)
-    
-    return scaled_data
 
 def build_model():
     input = tf.keras.Input(shape=(N_FEATURES, None), dtype=tf.float32)
