@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
-from tf_utils import GraphEmbeddings
+from graph_embeddings import GraphEmbeddings
 from utils import scale_data
 
 
@@ -42,6 +42,9 @@ def normalize_data(train, scalable_particle_features):
     return scaled_train, scalers
 
 def build_model():
+    """
+    Each sample has shape (N_FEATURES, number of particles)
+    """
     input = tf.keras.Input(shape=(N_FEATURES, None), dtype=tf.float32)
 
     # Reduce graph to vector embeddings

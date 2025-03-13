@@ -2,9 +2,11 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pickle
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.preprocessing import StandardScaler
+from tqdm import tqdm
 
 
 def create_1var_histogram_with_marker(data, data_label, marker, marker_label, title, x_label, filename):
@@ -180,6 +182,14 @@ def vectorized_lorentz_addition(particles, particle_masses):
     return calc_mass
 
 def scale_data(data, scalers, scalable_particle_features):
+    """
+    Scales a selection of features in a (None, num_particles, num_features) dimension dataset
+
+    Args:
+        data: np.array with shape (None, num_particles, num_features)
+        scalers: List[StandardScalers]
+    """
+
     scaled_data = data.copy()
     for scaler, idx in zip(scalers, scalable_particle_features):
         values = data[:, :, idx]
@@ -190,6 +200,63 @@ def scale_data(data, scalers, scalable_particle_features):
         scaled_data[:, :, idx] = scaled_values.reshape(values.shape)
     
     return scaled_data
+
+def load_data(data_directory):
+    """
+    Load data from files, normalize, and prepare TF datasets
+    Returns:
+        train_dataset, val_dataset, test_dataset
+    """
+    X_trains, y_trains = [], []
+    X_vals, y_vals = [], []
+    X_tests, y_tests = [], []
+
+    files = [f for f in os.listdir(os.path.join(data_directory, "test")) if f.endswith(".npz")]
+    
+    for name in tqdm(files, desc="Loading data"):
+        train = np.load(os.path.join(data_directory, "train", name))
+        val = np.load(os.path.join(data_directory, "val", name))
+        test = np.load(os.path.join(data_directory, "test", name))
+
+        X_trains.append(train['X'])
+        y_trains.append(train['y'])
+        X_vals.append(val['X'])
+        y_vals.append(val['y'])
+        X_tests.append(test['X'])
+        y_tests.append(test['y'])
+
+    X_train = np.concatenate(X_trains, axis=0)
+    y_train = np.concatenate(y_trains, axis=0)
+    X_val = np.concatenate(X_vals, axis=0)
+    y_val = np.concatenate(y_vals, axis=0)
+    X_test = np.concatenate(X_tests, axis=0)
+    y_test = np.concatenate(y_tests, axis=0)
+    
+    scalers = []
+    for i in range(3):
+        with open(os.path.join(data_directory, f"x_scaler_{i}.pkl"), 'rb') as f:
+            scalers.append(pickle.load(f))
+
+    X_train_scaled = scale_data(X_train, scalers, [0, 1, 2])
+    X_val_scaled = scale_data(X_val, scalers, [0, 1, 2])
+    X_test_scaled = scale_data(X_test, scalers, [0, 1, 2])
+    
+    with open(os.path.join(data_directory, "y_scaler.pkl"), 'rb') as f:
+        y_scaler = pickle.load(f)
+    y_train_scaled = y_scaler.transform(y_train.reshape(-1, 1))
+    y_val_scaled = y_scaler.transform(y_val.reshape(-1, 1))
+    y_test_scaled = y_scaler.transform(y_test.reshape(-1, 1))
+
+    del X_train, X_val, X_test, y_train, y_val, y_test
+    del X_trains, X_vals, X_tests, y_trains, y_vals, y_tests
+    del scalers, y_scaler
+
+    # Change from (batchsize, num particles, num features) to (batchsize, num features, num particles)
+    X_train_scaled = X_train_scaled.transpose(0, 2, 1)
+    X_val_scaled = X_val_scaled.transpose(0, 2, 1)
+    X_test_scaled = X_test_scaled.transpose(0, 2, 1)
+
+    return X_train_scaled, y_train_scaled, X_val_scaled, y_val_scaled, X_test_scaled, y_test_scaled
 
 def calculate_metrics(y_true, y_pred, name):
     mse = mean_squared_error(y_true, y_pred)

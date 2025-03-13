@@ -12,7 +12,7 @@ import random
 import re
 
 import ROOT_utils
-from tf_utils import GraphEmbeddings
+from graph_embeddings import GraphEmbeddings
 import utils
 
 
