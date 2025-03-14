@@ -10,6 +10,7 @@ from sklearn.preprocessing import StandardScaler
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.append(ROOT_DIR)
+from graph_embeddings import GraphEmbeddings
 from utils import *
 
 DATA_DIRECTORY = os.path.join(ROOT_DIR, "processed_data")
