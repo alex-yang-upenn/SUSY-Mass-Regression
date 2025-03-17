@@ -1,7 +1,5 @@
 import tensorflow as tf
 
-import tensorflow as tf
-
 class SimCLRNTXentLoss(tf.keras.losses.Loss):
     """
     SimCLR loss implementation
@@ -16,7 +14,8 @@ class SimCLRNTXentLoss(tf.keras.losses.Loss):
 
     def call(self, y_true, y_pred):
         # Unpack embeddings
-        anchor, positive = y_pred[0], y_pred[1]
+        anchor = y_pred[:, 0]
+        positive = y_pred[:, 1]
         batch_size = tf.shape(anchor)[0]
 
         # Normalize embeddings

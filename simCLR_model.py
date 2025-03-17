@@ -43,8 +43,8 @@ class SimCLRModel(tf.keras.Model):
         )
     
     def build(self, input_shape):        
-        # Build encoder and projection head
-        self.encoder.build(input_shape)
+        # Two inputs [view1, view2], each with shape (batch_size, n_features, None)
+        self.encoder.build(input_shape[0])
         self.projection_head.build((None, self.embedding_dim))
 
         super().build(input_shape)
@@ -65,7 +65,7 @@ class SimCLRModel(tf.keras.Model):
         p1 = self.projection_head(z1)
         p2 = self.projection_head(z2)
         
-        return p1, p2
+        return tf.stack([p1, p2], axis=1)
     
     def _create_encoder_model(
             self,
@@ -78,7 +78,7 @@ class SimCLRModel(tf.keras.Model):
         """
         Encodes each sample into an embedding with length EMBEDDING_DIM
         """
-        input = tf.keras.Input(shape=(n_features, None), dtype=tf.float32)
+        input = tf.keras.layers.Input(shape=(n_features, None), dtype=tf.float32, name='encoder_input')
         
         # Reduce graph to vector embeddings
         O_Bar = GraphEmbeddings(
@@ -100,9 +100,7 @@ class SimCLRModel(tf.keras.Model):
         dense = tf.keras.layers.Dense(units=embedding_dim)(phi_C)
         output = tf.keras.layers.BatchNormalization()(dense)
 
-        encoder_model = tf.keras.Model(inputs=[input], outputs=[output])
-
-        return encoder_model
+        return tf.keras.Model(inputs=input, outputs=output, name='encoder')
 
 
     def _create_projection_head(
@@ -114,7 +112,7 @@ class SimCLRModel(tf.keras.Model):
         """
         Projection head to be applied to embeddings. Shown in simCLR paper to improve performance.
         """
-        proj_input = tf.keras.Input(shape=(embedding_dim,))
+        proj_input = tf.keras.layers.Input(shape=(embedding_dim,), dtype=tf.float32, name='proj_input')
         
         proj_function = tf.keras.Sequential([
             layer
@@ -129,7 +127,7 @@ class SimCLRModel(tf.keras.Model):
         dense = tf.keras.layers.Dense(units=output_dim)(proj_function)
         proj_output = tf.keras.layers.BatchNormalization()(dense)
         
-        projection_model = tf.keras.Model(inputs=[proj_input], outputs=[proj_output])
+        projection_model = tf.keras.Model(inputs=proj_input, outputs=proj_output, name='projection_head')
         
         return projection_model
 
@@ -143,10 +141,8 @@ def create_simclr_model(
         phi_C_units=(128,),
         proj_units=(24,),
         temp=0.1,
+        learning_rate=5e-4,
 ):
-    # Define inputs for both views
-    input_view1 = tf.keras.Input(shape=(n_features, None), dtype=tf.float32)
-    input_view2 = tf.keras.Input(shape=(n_features, None), dtype=tf.float32)
     
     # Create and compile model
     model = SimCLRModel(
@@ -158,19 +154,12 @@ def create_simclr_model(
         phi_C_units,
         proj_units,
     )
+
     loss_fn = SimCLRNTXentLoss(temp)
+
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
         loss=loss_fn
     )
     
-    # Build model by calling it on inputs
-    outputs = model([input_view1, input_view2])
-    
-    # Create final Keras model
-    simclr_model = tf.keras.Model(
-        inputs=[input_view1, input_view2],
-        outputs=outputs
-    )
-    
-    return simclr_model
+    return model

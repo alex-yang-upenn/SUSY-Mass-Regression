@@ -22,7 +22,7 @@ class ViewPairsGenerator:
             view2 = transform2(x_batch)
             
             # Yield transformed views and original labels
-            yield [view1, view2], y_batch
+            yield ((view1, view2), y_batch)
 
 
     def delete_particle(self, x):
@@ -35,19 +35,24 @@ class ViewPairsGenerator:
         Returns:
             array with shape (None, num_features, num_particles - 1)
         """
-        batch_size, num_features, num_particles = x.shape
-        
-        # Generate random indices to delete
+        x_np = x.numpy()
+        batch_size, num_features, num_particles = x_np.shape
+    
         indices_to_delete = np.random.randint(0, num_particles, size=batch_size)
         
-        # Create a mask array
-        mask = np.ones((batch_size, num_particles), dtype=bool)  # (batch_size, num_particles)
-        mask[np.arange(batch_size), indices_to_delete] = False
-        mask = mask[:, np.newaxis, :]  # (batch_size, 1, num_particles)
+        result = np.zeros((batch_size, num_features, num_particles-1))
         
+        for i in range(batch_size):
+            idx = indices_to_delete[i]
+            
+            # Create a mask for the randomly selected particle
+            mask = np.ones(num_particles, dtype=bool)
+            mask[idx] = False
+            # Apply the mask to keep all particles except the one at idx
+            keep_indices = np.where(mask)[0]
+            result[i] = np.transpose(x_np[i, :, keep_indices])
 
-        result = x[mask].reshape(batch_size, num_features, num_particles-1)        
-        return result
+        return tf.convert_to_tensor(result)
 
 
     def reshuffle_particles(self, x):
@@ -60,20 +65,16 @@ class ViewPairsGenerator:
         Returns:
             array with the same shape but shuffled particles
         """
-        batch_size, num_features, num_particles = x.shape
+        x_np = x.numpy()
+        batch_size, num_features, num_particles = x_np.shape
+
+        result = np.zeros_like(x_np)
+
+        for i in range(batch_size):
+            perm = np.random.permutation(num_particles)
+            result[i] = np.transpose(x_np[i, :, perm])
         
-        # Create a shuffled index array for each item in the batch
-        idx = np.stack([np.random.permutation(num_particles) for _ in range(batch_size)])  # (batch_size, num_particles)
-        
-        # Set up indices
-        batch_idx = np.arange(batch_size)[:, None, None]  # (batch_size, 1, 1)
-        feature_idx = np.arange(num_features)[None, :, None]  # (1, num_features, 1)
-        particle_idx = idx[:, None, :]  # (batch_size, 1, num_particles)
-        
-        # Index: dim_1=batch_idx, dim_2=feature_idx, dim_3=particle_idx
-        result = x[batch_idx, feature_idx, particle_idx]
-        
-        return result
+        return tf.convert_to_tensor(result)
 
     def identity(self, x):
         """
