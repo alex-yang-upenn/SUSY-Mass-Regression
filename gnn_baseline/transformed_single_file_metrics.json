@@ -1,0 +1,92 @@
+{
+    "test_qX_qWY_qqqlv_X200_Y60.npz": {
+        "best_model_1.keras_metrics": {
+            "mse": 1818.254150390625,
+            "rmse": 42.64099143301695,
+            "mae": 35.044700622558594,
+            "r2": 0.0,
+            "mean_relative_error": 0.17522351443767548,
+            "median_relative_error": 0.12872245907783508
+        },
+        "lorentz_metrics": {
+            "mse": 3694.2706331794907,
+            "rmse": 60.78051195226551,
+            "mae": 38.35521503104351,
+            "r2": 0.0,
+            "mean_relative_error": 0.19177607515521752,
+            "median_relative_error": 0.1020078686283459
+        }
+    },
+    "test_qX_qWY_qqqlv_X250_Y80.npz": {
+        "best_model_1.keras_metrics": {
+            "mse": 627.35986328125,
+            "rmse": 25.047152797898008,
+            "mae": 19.602643966674805,
+            "r2": 0.0,
+            "mean_relative_error": 0.07841058075428009,
+            "median_relative_error": 0.06988229602575302
+        },
+        "lorentz_metrics": {
+            "mse": 4262.877911700473,
+            "rmse": 65.29071841923991,
+            "mae": 44.9418887948963,
+            "r2": 0.0,
+            "mean_relative_error": 0.17976755517958526,
+            "median_relative_error": 0.1083246430011077
+        }
+    },
+    "test_qX_qWY_qqqlv_X300_Y100.npz": {
+        "best_model_1.keras_metrics": {
+            "mse": 571.1267700195312,
+            "rmse": 23.89825872358761,
+            "mae": 18.49966049194336,
+            "r2": 0.0,
+            "mean_relative_error": 0.06166553124785423,
+            "median_relative_error": 0.04971018433570862
+        },
+        "lorentz_metrics": {
+            "mse": 4396.163381115221,
+            "rmse": 66.3035698972176,
+            "mae": 42.19711273844445,
+            "r2": 0.0,
+            "mean_relative_error": 0.1406570424614815,
+            "median_relative_error": 0.08329579564217321
+        }
+    },
+    "test_qX_qWY_qqqlv_X350_Y130.npz": {
+        "best_model_1.keras_metrics": {
+            "mse": 882.2569580078125,
+            "rmse": 29.70281060788377,
+            "mae": 19.565025329589844,
+            "r2": 0.0,
+            "mean_relative_error": 0.055900074541568756,
+            "median_relative_error": 0.036491043865680695
+        },
+        "lorentz_metrics": {
+            "mse": 9257.42182225621,
+            "rmse": 96.21549678849146,
+            "mae": 67.61431995548556,
+            "r2": 0.0,
+            "mean_relative_error": 0.1931837713013873,
+            "median_relative_error": 0.11604750645660641
+        }
+    },
+    "test_qX_qWY_qqqlv_X400_Y160.npz": {
+        "best_model_1.keras_metrics": {
+            "mse": 2605.71142578125,
+            "rmse": 51.04616955052798,
+            "mae": 33.05789566040039,
+            "r2": 0.0,
+            "mean_relative_error": 0.08264473080635071,
+            "median_relative_error": 0.04560405761003494
+        },
+        "lorentz_metrics": {
+            "mse": 3833.7707995081428,
+            "rmse": 61.91745149397012,
+            "mae": 39.299333906078644,
+            "r2": 0.0,
+            "mean_relative_error": 0.09824833476519661,
+            "median_relative_error": 0.05715905296681349
+        }
+    }
+}

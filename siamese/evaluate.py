@@ -1,4 +1,3 @@
-import datetime
 import json
 import os
 import numpy as np
@@ -12,6 +11,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.append(ROOT_DIR)
 from graph_embeddings import GraphEmbeddings
+from loss_functions import SimCLRNTXentLoss
 from simCLR_model import *
 from transformation import ViewPairsGenerator
 from utils import *
@@ -20,13 +20,12 @@ from utils import *
 # General Parameters
 DATA_DIRECTORY = os.path.join(ROOT_DIR, "processed_data")
 CHECKPOINT_DIRECTORY = os.path.join(SCRIPT_DIR, "checkpoints")
-RUN_ID = 1 # datetime.datetime.now().strftime('%m-%d_%H:%M')
+RUN_ID = 1
 # Model Hyperparameters
 N_FEATURES = 6
 EMBEDDING_DIM = 64
 OUTPUT_DIM = 48
 BATCHSIZE = 128
-EPOCHS = 20
 
 os.makedirs(CHECKPOINT_DIRECTORY, exist_ok=True)
 
@@ -50,70 +49,35 @@ def create_transformed_dataset(X, y):
         output_signature=output_signature
     ).prefetch(tf.data.AUTOTUNE)
 
-    return transformed_dataset.repeat()
+    return transformed_dataset
 
 
 def main():
-    X_train, y_train, X_val, y_val, X_test, y_test = load_data(DATA_DIRECTORY)
-    train_size = len(X_train)
-    val_size = len(X_val)
+    _, _, _, _, X_test, y_test = load_data(DATA_DIRECTORY)
     test_size = len(X_test)
-    train_batches = int(train_size // BATCHSIZE)
-    val_batches = int(val_size / BATCHSIZE)
     test_batches = int(test_size // BATCHSIZE)
-
-    train_pairs = create_transformed_dataset(X_train, y_train)
-
-    val_pairs = create_transformed_dataset(X_val, y_val)
 
     test_pairs = create_transformed_dataset(X_test, y_test)
 
-    simclr_model = create_simclr_model(
+    # loaded_model = tf.keras.models.load_model(
+    #     os.path.join(CHECKPOINT_DIRECTORY, f"best_model_{RUN_ID}.keras"),
+    #     custom_objects={"SimCLRNTXentLoss": SimCLRNTXentLoss, "GraphEmbeddings": GraphEmbeddings, "SimCLRModel": SimCLRModel}
+    # )
+
+    loaded_model = create_simclr_model(
         n_features=N_FEATURES,
         embedding_dim=EMBEDDING_DIM,
         output_dim=OUTPUT_DIM
     )
 
-    callbacks = [
-        tf.keras.callbacks.BackupAndRestore(
-            backup_dir=os.path.join(CHECKPOINT_DIRECTORY, f"backup_{RUN_ID}")
-        ),
-        tf.keras.callbacks.EarlyStopping(
-            monitor='val_loss',
-            patience=6,
-            restore_best_weights=True
-        ),
-        tf.keras.callbacks.ReduceLROnPlateau(
-            monitor='val_loss',
-            factor=0.5,
-            patience=3
-        ),
-        tf.keras.callbacks.ModelCheckpoint(
-            filepath=os.path.join(CHECKPOINT_DIRECTORY, f"best_model_{RUN_ID}.keras"),
-            monitor='val_loss',
-            save_best_only=True
-        ),
-        tf.keras.callbacks.CSVLogger(
-            os.path.join(CHECKPOINT_DIRECTORY, f"log_{RUN_ID}.csv"),
-            append=True
-        )
-    ]
-
     # Call the model once to build it
-    for inputs, _ in train_pairs.take(1):
-        _ = simclr_model(inputs)
+    for inputs, _ in test_pairs.take(1):
+        _ = loaded_model(inputs)
         break
 
-    simclr_model.fit(
-        train_pairs,
-        validation_data=val_pairs,
-        epochs=EPOCHS,
-        steps_per_epoch=train_batches,
-        validation_steps=val_batches,
-        callbacks=callbacks
-    )
+    loaded_model.load_weights(os.path.join(CHECKPOINT_DIRECTORY, f"best_model_{RUN_ID}.keras"))
 
-    test_loss = simclr_model.evaluate(test_pairs, steps=test_batches, verbose=1)
+    test_loss = loaded_model.evaluate(test_pairs, steps=test_batches, verbose=1)
 
     results_dict = {
         "contrastive_loss_test_dataset": test_loss

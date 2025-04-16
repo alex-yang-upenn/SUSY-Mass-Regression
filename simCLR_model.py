@@ -130,6 +130,23 @@ class SimCLRModel(tf.keras.Model):
         projection_model = tf.keras.Model(inputs=proj_input, outputs=proj_output, name='projection_head')
         
         return projection_model
+    
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            'n_features': self.n_features,
+            'embedding_dim': self.embedding_dim,
+            'output_dim': self.output_dim,
+            'f_r_units': self.f_r_units,
+            'f_o_units': self.f_o_units,
+            'phi_C_units': self.phi_C_units,
+            'proj_units': self.proj_units,
+        })
+        return config
+
+    @classmethod
+    def from_config(cls, config):
+        return cls(**config)
 
 
 def create_simclr_model(

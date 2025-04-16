@@ -258,6 +258,41 @@ def load_data(data_directory):
 
     return X_train_scaled, y_train_scaled, X_val_scaled, y_val_scaled, X_test_scaled, y_test_scaled
 
+def load_data_original(data_directory):
+    """
+    Load data from files but does not scale or transpose
+    Returns:
+        train_dataset, val_dataset, test_dataset
+    """
+    X_trains, y_trains = [], []
+    X_vals, y_vals = [], []
+    X_tests, y_tests = [], []
+
+    files = [f for f in os.listdir(os.path.join(data_directory, "test")) if f.endswith(".npz")]
+    
+    for name in tqdm(files, desc="Loading data"):
+        train = np.load(os.path.join(data_directory, "train", name))
+        val = np.load(os.path.join(data_directory, "val", name))
+        test = np.load(os.path.join(data_directory, "test", name))
+
+        X_trains.append(train['X'])
+        y_trains.append(train['y'])
+        X_vals.append(val['X'])
+        y_vals.append(val['y'])
+        X_tests.append(test['X'])
+        y_tests.append(test['y'])
+
+    X_train = np.concatenate(X_trains, axis=0)
+    y_train = np.concatenate(y_trains, axis=0)
+    X_val = np.concatenate(X_vals, axis=0)
+    y_val = np.concatenate(y_vals, axis=0)
+    X_test = np.concatenate(X_tests, axis=0)
+    y_test = np.concatenate(y_tests, axis=0)
+
+    del X_trains, X_vals, X_tests, y_trains, y_vals, y_tests
+
+    return X_train, y_train, X_val, y_val, X_test, y_test
+
 def calculate_metrics(y_true, y_pred, name):
     mse = mean_squared_error(y_true, y_pred)
     rmse = np.sqrt(mse)
