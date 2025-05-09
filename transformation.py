@@ -160,3 +160,44 @@ class ViewTransformedGenerator:
         No transformation
         """
         return x
+
+
+def create_transformed_pairs_dataset(X, y, batchsize, n_features):
+    # Create TensorFlow datasets
+    dataset = tf.data.Dataset.from_tensor_slices((X, y)).batch(batchsize)
+
+    view_pairs_generator = ViewPairsGenerator(dataset)
+
+    output_signature = (
+        (
+            tf.TensorSpec(shape=(None, n_features, None), dtype=tf.float32),
+            tf.TensorSpec(shape=(None, n_features, None), dtype=tf.float32),
+        ),
+        tf.TensorSpec(shape=(None, 1), dtype=tf.float32)
+    )
+
+    transformed_dataset = tf.data.Dataset.from_generator(
+        view_pairs_generator.generate,
+        output_signature=output_signature
+    ).prefetch(tf.data.AUTOTUNE)
+
+    return transformed_dataset.repeat()
+
+
+def create_transformed_dataset(X, y, batchsize, n_features):
+    # Create TensorFlow datasets
+    dataset = tf.data.Dataset.from_tensor_slices((X, y)).batch(batchsize)
+
+    view_transformed_generator = ViewTransformedGenerator(dataset)
+
+    output_signature = (
+        tf.TensorSpec(shape=(None, n_features, None), dtype=tf.float32),
+        tf.TensorSpec(shape=(None, 1), dtype=tf.float32)
+    )
+
+    transformed_dataset = tf.data.Dataset.from_generator(
+        view_transformed_generator.generate,
+        output_signature=output_signature
+    ).prefetch(tf.data.AUTOTUNE)
+
+    return transformed_dataset

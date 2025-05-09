@@ -13,3 +13,5 @@ processed_data/train/*
 processed_data/val/*
 
 old/*
+
+siamese/*.npz

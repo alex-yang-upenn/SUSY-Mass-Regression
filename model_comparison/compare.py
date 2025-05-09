@@ -12,6 +12,7 @@ ROOT_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.append(ROOT_DIR)
 from graph_embeddings import GraphEmbeddings
 from utils import *
+from plotting import *
 
 DATA_DIRECTORY = os.path.join(ROOT_DIR, "processed_data")
 MODEL_NAME = "best_model_1.keras"
@@ -21,7 +22,7 @@ def main():
     # Predictions given by model
     _, _, _, _, X_test, y_test = load_data(DATA_DIRECTORY)
 
-    model = tf.keras.models.load_model(os.path.join(SCRIPT_DIR, "checkpoints", MODEL_NAME))
+    model = tf.keras.models.load_model(os.path.join(ROOT_DIR, "gnn_baseline", "checkpoints", MODEL_NAME))
 
     y_model_scaled = model.predict(X_test, verbose=1)
 
@@ -45,7 +46,6 @@ def main():
     }
     with open(os.path.join(SCRIPT_DIR, "metrics.json"), 'w') as f:
         json.dump(metrics, f, indent=4)
-
 
 if __name__ == "__main__":
     main()

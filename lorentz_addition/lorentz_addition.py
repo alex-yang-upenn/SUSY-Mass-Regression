@@ -18,6 +18,7 @@ import sys
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 from utils import *
+from plotting import *
 
 RAW_DATA_DIRECTORY = os.path.join(os.path.dirname(SCRIPT_DIR), "raw_data")
 PROCESSED_DATA_DIRECTORY = os.path.join(os.path.dirname(SCRIPT_DIR), "processed_data")

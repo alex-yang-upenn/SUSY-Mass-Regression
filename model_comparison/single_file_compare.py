@@ -8,8 +8,10 @@ from sklearn.preprocessing import StandardScaler
 
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 from utils import *
+from plotting import *
 
 DATA_DIRECTORY = os.path.join(os.path.dirname(SCRIPT_DIR), "processed_data")
 SELECTED_FILES = [
@@ -21,6 +23,7 @@ SELECTED_FILES = [
 ]
 MODEL_NAME = "best_model_1.keras"
 OUTPUT_IMAGE_DIRECTORY = os.path.join(SCRIPT_DIR, "graphs")
+OUTPUT_COMPARE_DIRECTORY = os.path.join(SCRIPT_DIR, "comparison_plots")
 
 os.makedirs(OUTPUT_IMAGE_DIRECTORY, exist_ok=True)
 
@@ -33,13 +36,13 @@ def main():
         with open(os.path.join(DATA_DIRECTORY, f"x_scaler_{i}.pkl"), 'rb') as f:
             scalers.append(pickle.load(f))
     
-    model = tf.keras.models.load_model(os.path.join(SCRIPT_DIR, "checkpoints", MODEL_NAME))
+    model = tf.keras.models.load_model(os.path.join(ROOT_DIR, "gnn_baseline", "checkpoints", MODEL_NAME))
     
     with open(os.path.join(DATA_DIRECTORY, "y_scaler.pkl"), 'rb') as f:
         y_scaler = pickle.load(f)
 
     for name in SELECTED_FILES:
-        # Load in data
+        # Load in raw data
         test = np.load(os.path.join(DATA_DIRECTORY, "test", name))
         X_test = test['X']
         y_true = test['y']
@@ -63,7 +66,8 @@ def main():
             **lorentz_metrics
         }
         single_file_metrics[name] = metrics
-
+        
+        # Graph Double Histogram 
         create_2var_histogram_with_marker(
             data1=y_model,
             data_label1="GNN Prediction",
@@ -75,7 +79,23 @@ def main():
             x_label="Mass (GeV / c^2)",
             filename=f"{OUTPUT_IMAGE_DIRECTORY}/{name}.png"
         )
-
+        
+        model_performance_dict = {
+            "GNN_original": {
+                "mean": np.mean(y_model) / y_true[0],
+                "+1σ": (np.mean(y_model) + np.std(y_model)) / y_true[0],
+                "-1σ": (np.mean(y_model) - np.std(y_model)) / y_true[0],
+            },
+            "Lorentz_original": {
+                "mean": np.mean(y_lorentz) / y_true[0],
+                "+1σ": (np.mean(y_lorentz) + np.std(y_lorentz)) / y_true[0],
+                "-1σ": (np.mean(y_lorentz) - np.std(y_lorentz)) / y_true[0],
+            }
+        }
+        compare_performance_single(
+            model_performance_dict=model_performance_dict,
+            filename=f"{OUTPUT_COMPARE_DIRECTORY}/{name}.png",
+        )
 
     with open(os.path.join(SCRIPT_DIR, "single_file_metrics.json"), 'w') as f:
         json.dump(single_file_metrics, f, indent=4)

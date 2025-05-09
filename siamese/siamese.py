@@ -13,13 +13,13 @@ ROOT_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.append(ROOT_DIR)
 from graph_embeddings import GraphEmbeddings
 from simCLR_model import *
-from transformation import ViewPairsGenerator
+from transformation import ViewPairsGenerator, create_transformed_pairs_dataset
 from utils import *
 
 
 # General Parameters
 DATA_DIRECTORY = os.path.join(ROOT_DIR, "processed_data")
-CHECKPOINT_DIRECTORY = os.path.join(SCRIPT_DIR, "checkpoints")
+CHECKPOINT_DIRECTORY = os.path.join(SCRIPT_DIR, "checkpoints_test")
 RUN_ID = 1 # datetime.datetime.now().strftime('%m-%d_%H:%M')
 # Model Hyperparameters
 N_FEATURES = 6
@@ -31,28 +31,6 @@ EPOCHS = 20
 os.makedirs(CHECKPOINT_DIRECTORY, exist_ok=True)
 
 
-def create_transformed_dataset(X, y):
-    # Create TensorFlow datasets
-    dataset = tf.data.Dataset.from_tensor_slices((X, y)).batch(BATCHSIZE)
-
-    view_pairs_generator = ViewPairsGenerator(dataset)
-
-    output_signature = (
-        (
-            tf.TensorSpec(shape=(None, N_FEATURES, None), dtype=tf.float32),
-            tf.TensorSpec(shape=(None, N_FEATURES, None), dtype=tf.float32),
-        ),
-        tf.TensorSpec(shape=(None, 1), dtype=tf.float32)
-    )
-
-    transformed_dataset = tf.data.Dataset.from_generator(
-        view_pairs_generator.generate,
-        output_signature=output_signature
-    ).prefetch(tf.data.AUTOTUNE)
-
-    return transformed_dataset.repeat()
-
-
 def main():
     X_train, y_train, X_val, y_val, X_test, y_test = load_data(DATA_DIRECTORY)
     train_size = len(X_train)
@@ -62,11 +40,11 @@ def main():
     val_batches = int(val_size / BATCHSIZE)
     test_batches = int(test_size // BATCHSIZE)
 
-    train_pairs = create_transformed_dataset(X_train, y_train)
+    train_pairs = create_transformed_pairs_dataset(X_train, y_train, BATCHSIZE, N_FEATURES)
 
-    val_pairs = create_transformed_dataset(X_val, y_val)
+    val_pairs = create_transformed_pairs_dataset(X_val, y_val, BATCHSIZE, N_FEATURES)
 
-    test_pairs = create_transformed_dataset(X_test, y_test)
+    test_pairs = create_transformed_pairs_dataset(X_test, y_test, BATCHSIZE, N_FEATURES)
 
     simclr_model = create_simclr_model(
         n_features=N_FEATURES,
