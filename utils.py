@@ -17,20 +17,26 @@ def cylindrical_to_cartesian(pts, etas, phis):
     pz = pts * np.sinh(etas)
     return px, py, pz
 
-def vectorized_lorentz_addition(particles, particle_masses):
+
+def vectorized_lorentz_addition(particles, particle_masses, pt_index=0, eta_index=1, phi_index=2):
     """
-    Lorentz vector addition with numpy
+    Sums the lorentz vectors of all particles, for each event. Uses numpy functions for efficiency.
     
-    Parameters:
-    -----------
-    particles : np.array, shape=(n_events, n_particles, 6). The first three features are Pt, Eta, Phi.
-    particle_masses : np.array, shape=(n_events, n_particles). The mass of each input particle.
+    Args:
+        particles (numpy.ndarray):
+            Array should be of shape (n_samples, n_particles, n_features)
+        particle_masses (numpy.ndarray): 
+            Array should be of shape (n_events, n_particles) each entry contains the corresponding mass
+            of the particle at the same index in `particles`
+        pt_index (int): Index along the third dimension of the input that corresponds to transverse momentum
+        eta_index (int): Index along the third dimension of the input that corresponds to pseudorapidity
+        phi_index (int): Index along the third dimension of the input that corresponds to azimuthal angle
     
     Returns:
-    --------
-    np.array, shape=(n_events). Mass of X for each event
+        numpy.ndarray:
+            Array with shape (n_events,). Each value is the mass of the unknown particle X for the
+            corresponding event
     """
-
     pts = particles[:, :, 0]
     etas = particles[:, :, 1]
     phis = particles[:, :, 2]
@@ -53,15 +59,54 @@ def vectorized_lorentz_addition(particles, particle_masses):
 
     return calc_mass
 
+
+def normalize_data(train, scalable_particle_features):
+    """
+    Normalizes specified model inputs across the training dataset, using sklearn's Standard Scaler.
+
+    Args:
+        train (numpy.ndarray): 
+            Model inputs. Should be a numpy array with shape (n_samples, n_particles, n_features)
+        scalable_particle_features (list of int):
+            List of indices specifiying which features to normalize. E.x. scalable_particle_features=[0, 1]
+            normalizes the first 2 features, across all particles across all samples.
+    
+    Returns:
+        (numpy.ndarray, sklearn.preprocessing.StandardScaler): 
+            First Entry: The training dataset, after normalization.
+            
+            Second Entry: StandardScalers corresponding to each normalized feature.
+            E.x. scalable_particle_features=[0, 1] returns a length 2 list, index 0 contains
+            the scaler used for the first feature, etc.
+    """
+    scalers = []
+    scaled_train = train.copy()
+    for i in scalable_particle_features:
+        values = train[:, :, i]
+        values_flat = values.reshape(-1, 1)
+
+        scaler = StandardScaler()
+        scaled_values = scaler.fit_transform(values_flat)
+
+        scaled_train[:, :, i] = scaled_values.reshape(values.shape)
+        scalers.append(scaler)
+
+    return scaled_train, scalers
+
+
 def scale_data(data, scalers, scalable_particle_features):
     """
     Scales a selection of features in a (None, num_particles, num_features) dimension dataset
 
     Args:
-        data: np.array with shape (None, num_particles, num_features)
-        scalers: List[StandardScalers]
+        data (numpy.ndarray):
+            np.array with shape (None, num_particles, num_features)
+        scalers (List of StandardScalers):
+            List of scalers to apply to the data
+        scalable_particle_features (List of int):
+            The corresponding indices at which to apply each of the scalers. E.x. scalers[0] will be applied
+            to data[:, :, scalable_particle_features[0]]
     """
-
     scaled_data = data.copy()
     for scaler, idx in zip(scalers, scalable_particle_features):
         values = data[:, :, idx]
@@ -72,6 +117,7 @@ def scale_data(data, scalers, scalable_particle_features):
         scaled_data[:, :, idx] = scaled_values.reshape(values.shape)
     
     return scaled_data
+
 
 def load_data(data_directory):
     """
@@ -130,6 +176,7 @@ def load_data(data_directory):
 
     return X_train_scaled, y_train_scaled, X_val_scaled, y_val_scaled, X_test_scaled, y_test_scaled
 
+
 def load_data_original(data_directory):
     """
     Load data from files but does not scale or transpose
@@ -164,6 +211,7 @@ def load_data_original(data_directory):
     del X_trains, X_vals, X_tests, y_trains, y_vals, y_tests
 
     return X_train, y_train, X_val, y_val, X_test, y_test
+
 
 def calculate_metrics(y_true, y_pred, name):
     mse = mean_squared_error(y_true, y_pred)

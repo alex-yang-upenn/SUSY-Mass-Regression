@@ -3,58 +3,41 @@ Module Name: lorentz_addition
 
 Description:
     This module handles inspecting the preprocessed numpy files, to verify that the data is correct.
-    It also attempts a naive lorentz addition of the decay chain products, with with MET_eta = 0
+    It also attempts a naive lorentz addition of the decay chain products, with MET_eta = 0
 
 Usage:
 Author:
 Date:
 License:
 """
-import ROOT
-import numpy as np
 import os
 import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.dirname(SCRIPT_DIR))
-from utils import *
+ROOT_DIR = os.path.dirname(SCRIPT_DIR)
+sys.path.append(ROOT_DIR)
+
+import ROOT
+import numpy as np
+import os
+
+import config
 from plotting import *
-
-RAW_DATA_DIRECTORY = os.path.join(os.path.dirname(SCRIPT_DIR), "raw_data")
-PROCESSED_DATA_DIRECTORY = os.path.join(os.path.dirname(SCRIPT_DIR), "processed_data")
-SELECTED_FILES = [
-    "test_qX_qWY_qqqlv_X200_Y60.npz",
-    "test_qX_qWY_qqqlv_X250_Y80.npz",
-    "test_qX_qWY_qqqlv_X300_Y100.npz",
-    "test_qX_qWY_qqqlv_X350_Y130.npz",
-    "test_qX_qWY_qqqlv_X400_Y160.npz",
-]
-OUTPUT_IMAGE_DIRECTORY = os.path.join(SCRIPT_DIR, "graphs")
-
-os.makedirs(OUTPUT_IMAGE_DIRECTORY, exist_ok=True)
-
-
-def create_lorentz_vector(pt, eta, phi, mass):
-    """
-    Returns:
-    --------
-    ROOT.TLorentzVector: Lorentz vector from pt, eta, phi, mass
-    """
-    vec = ROOT.TLorentzVector()
-    vec.SetPtEtaPhiM(pt, eta, phi, mass)
-    return vec
+from utils import *
 
 
 def main():
+    os.makedirs(os.path.join(SCRIPT_DIR, "graphs"), exist_ok=True)
+
     single_file_metrics = {}
 
-    for name in SELECTED_FILES:
+    for name in config.EVAL_DATA_FILES:
         print(f"Processing file {name}")
 
         # Load in data
-        train = np.load(os.path.join(PROCESSED_DATA_DIRECTORY, "train", name))
-        val = np.load(os.path.join(PROCESSED_DATA_DIRECTORY, "val", name))
-        test = np.load(os.path.join(PROCESSED_DATA_DIRECTORY, "test", name))
+        train = np.load(os.path.join(config.PROCESSED_DATA_DIRECTORY, "train", name))
+        val = np.load(os.path.join(config.PROCESSED_DATA_DIRECTORY, "val", name))
+        test = np.load(os.path.join(config.PROCESSED_DATA_DIRECTORY, "test", name))
         
         X_train, y_train, y_eta_train = train["X"], train["y"], train["y_eta"]
         X_val, y_val, y_eta_val = val["X"], val["y"], val["y_eta"]
@@ -68,7 +51,7 @@ def main():
 
         # Obtain true mass from ROOT file
         root_name = name.replace(".npz", ".root")
-        root_file = ROOT.TFile.Open(os.path.join(RAW_DATA_DIRECTORY, root_name))
+        root_file = ROOT.TFile.Open(os.path.join(config.RAW_DATA_DIRECTORY, root_name))
         test_tree = root_file.Get("test")
         test_tree.GetEntry(0)
         y_true = getattr(test_tree, "T1M")
@@ -103,8 +86,8 @@ def main():
             marker_label="True Mass",
             title=f"Mass Regression for {name}",
             x_label="Mass (GeV / c^2)",
-            filename=f"{OUTPUT_IMAGE_DIRECTORY}/{name}.png"
+            filename=os.path.join(SCRIPT_DIR, f"graphs/{name}.png"),
         )
-    
+
 if __name__ == "__main__":
     main()

@@ -1,11 +1,11 @@
 {
-    "best_model_1.keras_metrics": {
-        "mse": 627.23876953125,
-        "rmse": 25.044735365566353,
-        "mae": 18.163345336914062,
-        "r2": 0.8094121217727661,
-        "mean_relative_error": 0.05810298025608063,
-        "median_relative_error": 0.04264937341213226
+    "gnn_baseline_metrics": {
+        "mse": 690.0435180664062,
+        "rmse": 26.268679412304042,
+        "mae": 19.39936637878418,
+        "r2": 0.7903287410736084,
+        "mean_relative_error": 0.06379514187574387,
+        "median_relative_error": 0.047367580235004425
     },
     "lorentz_metrics": {
         "mse": 3452.7256216421233,

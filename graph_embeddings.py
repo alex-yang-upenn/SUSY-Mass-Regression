@@ -11,8 +11,8 @@ class GraphEmbeddings(tf.keras.layers.Layer):
     """
 
     def __init__(self,         
-                f_r_units=(64, 32, 16), 
-                f_o_units=(64, 32, 16),
+                f_r_units, 
+                f_o_units,
                 **kwargs):
         super().__init__(**kwargs)
 
@@ -25,8 +25,9 @@ class GraphEmbeddings(tf.keras.layers.Layer):
             layer
             for units in self.f_r_units
             for layer in [
-                tf.keras.layers.Dense(units, activation="relu"),
-                tf.keras.layers.BatchNormalization()
+                tf.keras.layers.Dense(units),
+                tf.keras.layers.BatchNormalization(),
+                tf.keras.layers.ReLU()
             ]
         ])
 
@@ -34,8 +35,9 @@ class GraphEmbeddings(tf.keras.layers.Layer):
             layer
             for units in self.f_o_units
             for layer in [
-                tf.keras.layers.Dense(units, activation="relu"),
-                tf.keras.layers.BatchNormalization()
+                tf.keras.layers.Dense(units),
+                tf.keras.layers.BatchNormalization(),
+                tf.keras.layers.ReLU()
             ]
         ])
 

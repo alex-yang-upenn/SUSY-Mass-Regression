@@ -1,80 +1,50 @@
-import datetime
-import json
 import os
+import sys
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(SCRIPT_DIR)
+sys.path.append(ROOT_DIR)
+
+import json
 import numpy as np
 import pickle
 from sklearn.preprocessing import StandardScaler
-import sys
 import tensorflow as tf
 from tqdm import tqdm
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.dirname(SCRIPT_DIR))
+import config
 from graph_embeddings import GraphEmbeddings
-from utils import scale_data
+from utils import load_data_original, normalize_data, scale_data
 
 
-# General Parameters
-DATA_DIRECTORY = os.path.join(os.path.dirname(SCRIPT_DIR), "processed_data")
-CHECKPOINT_DIRECTORY = os.path.join(SCRIPT_DIR, "checkpoints")
-RUN_ID = 1 # datetime.datetime.now().strftime('%m-%d_%H:%M')
-# Model Hyperparameters
-N_FEATURES = 6
-BATCHSIZE = 128
-EPOCHS = 20
-
-os.makedirs(os.path.join(SCRIPT_DIR, "checkpoints"), exist_ok=True)
-
-
-def normalize_data(train, scalable_particle_features):
-    scalers = []
-    scaled_train = train.copy()
-    for i in scalable_particle_features:
-        values = train[:, :, i]
-        values_flat = values.reshape(-1, 1)
-
-        scaler = StandardScaler()
-        scaled_values = scaler.fit_transform(values_flat)
-
-        scaled_train[:, :, i] = scaled_values.reshape(values.shape)
-        scalers.append(scaler)
-
-    return scaled_train, scalers
-
-def build_model():
+def build_model_helper():
     """
-    Each sample has shape (N_FEATURES, number of particles)
+    Each sample has shape (N_FEATURES, N_PARTICLES)
     """
-    input = tf.keras.Input(shape=(N_FEATURES, None), dtype=tf.float32)
+    input = tf.keras.Input(shape=(config.N_FEATURES, None), dtype=tf.float32)
 
     # Reduce graph to vector embeddings
     O_Bar = GraphEmbeddings(
-        f_r_units=(96, 64, 32),
-        f_o_units=(128, 64, 8)
+        f_r_units=config.GNN_BASELINE_F_R_LAYER_SIZES,
+        f_o_units=config.GNN_BASELINE_F_O_LAYER_SIZES,
     )(input)
     
     # Trainable function phi_C to compute MET Eta from vector embeddings
-    dense1 = tf.keras.layers.Dense(units=128)(O_Bar)
-    norm1 = tf.keras.layers.BatchNormalization()(dense1)
-    dense1_out = tf.keras.layers.ReLU()(norm1)
-    
+    phi_C = tf.keras.Sequential([
+        layer
+        for units in config.GNN_BASELINE_PHI_C_LAYER_SIZES
+        for layer in [
+            tf.keras.layers.Dense(units),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.ReLU()
+        ]
+    ])(O_Bar)
 
-    dense2 = tf.keras.layers.Dense(units=32)(dense1_out)
-    norm2 = tf.keras.layers.BatchNormalization()(dense2)
-    dense2_out = tf.keras.layers.ReLU()(norm2)
-
-    dense3 = tf.keras.layers.Dense(units=24)(dense2_out)
-    norm3 = tf.keras.layers.BatchNormalization()(dense3)
-    dense3_out = tf.keras.layers.ReLU()(norm3)
-
-    output = tf.keras.layers.Dense(1)(dense3_out)
+    output = tf.keras.layers.Dense(1)(phi_C)
     
     # Create and compile model
     model = tf.keras.Model(inputs=input, outputs=output)
-    
-    learning_rate = 5e-4
-    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
-
+    optimizer = tf.keras.optimizers.Adam(learning_rate=config.GNN_BASELINE_LEARNING_RATE)
     model.compile(
         optimizer=optimizer,
         loss='mse',
@@ -84,33 +54,11 @@ def build_model():
     return model
 
 def main():
-    print("GPUs Available: ", tf.config.list_physical_devices("GPU"))
+    model_dir = os.path.join(SCRIPT_DIR, f"model_{config.RUN_ID}")
+    os.makedirs(model_dir, exist_ok=True)
     
-    X_trains, y_trains = [], []
-    X_vals, y_vals = [], []
-    X_tests, y_tests = [], []
+    X_train, y_train, X_val, y_val, X_test, y_test = load_data_original(config.PROCESSED_DATA_DIRECTORY)
 
-    files = [f for f in os.listdir(os.path.join(DATA_DIRECTORY, "test")) if f.endswith(".npz")]
-    
-    for name in tqdm(files, desc="Loading data"):
-        train = np.load(os.path.join(DATA_DIRECTORY, "train", name))
-        val = np.load(os.path.join(DATA_DIRECTORY, "val", name))
-        test = np.load(os.path.join(DATA_DIRECTORY, "test", name))
-
-        X_trains.append(train['X'])
-        y_trains.append(train['y'])
-        X_vals.append(val['X'])
-        y_vals.append(val['y'])
-        X_tests.append(test['X'])
-        y_tests.append(test['y'])
-
-    X_train = np.concatenate(X_trains, axis=0)
-    y_train = np.concatenate(y_trains, axis=0)
-    X_val = np.concatenate(X_vals, axis=0)
-    y_val = np.concatenate(y_vals, axis=0)
-    X_test = np.concatenate(X_tests, axis=0)
-    y_test = np.concatenate(y_tests, axis=0)
-    
     X_train_scaled, scalers = normalize_data(X_train, [0, 1, 2])
     X_val_scaled = scale_data(X_val, scalers, [0, 1, 2])
     X_test_scaled = scale_data(X_test, scalers, [0, 1, 2])
@@ -120,16 +68,14 @@ def main():
     y_val_scaled = y_scaler.transform(y_val.reshape(-1, 1))
     y_test_scaled = y_scaler.transform(y_test.reshape(-1, 1))
 
-    del X_train, X_val, X_test, y_train, y_val, y_test
-    del X_trains, X_vals, X_tests, y_trains, y_vals, y_tests
-
     for i, s in enumerate(scalers):
-        with open(os.path.join(DATA_DIRECTORY, f"x_scaler_{i}.pkl"), 'wb') as f:
+        with open(os.path.join(config.PROCESSED_DATA_DIRECTORY, f"x_scaler_{i}.pkl"), 'wb') as f:
             pickle.dump(s, f)
-    
-    with open(os.path.join(DATA_DIRECTORY, "y_scaler.pkl"), 'wb') as f:
+
+    with open(os.path.join(config.PROCESSED_DATA_DIRECTORY, "y_scaler.pkl"), 'wb') as f:
         pickle.dump(y_scaler, f)
 
+    del X_train, X_val, X_test, y_train, y_val, y_test
     del scalers, y_scaler
 
     # Change from (batchsize, num particles, num features) to (batchsize, num features, num particles)
@@ -137,40 +83,14 @@ def main():
     X_val_scaled = X_val_scaled.transpose(0, 2, 1)
     X_test_scaled = X_test_scaled.transpose(0, 2, 1)
 
-    # Define callbacks
-    callbacks = [
-        tf.keras.callbacks.BackupAndRestore(
-            backup_dir=os.path.join(CHECKPOINT_DIRECTORY, f"backup_{RUN_ID}")
-        ),
-        tf.keras.callbacks.EarlyStopping(
-            monitor='val_loss',
-            patience=6,
-            restore_best_weights=True
-        ),
-        tf.keras.callbacks.ReduceLROnPlateau(
-            monitor='val_loss',
-            factor=0.5,
-            patience=3
-        ),
-        tf.keras.callbacks.ModelCheckpoint(
-            filepath=os.path.join(CHECKPOINT_DIRECTORY, f"best_model_{RUN_ID}.keras"),
-            monitor='val_loss',
-            save_best_only=True
-        ),
-        tf.keras.callbacks.CSVLogger(
-            os.path.join(CHECKPOINT_DIRECTORY, f"log_{RUN_ID}.csv"),
-            append=True
-        )
-    ]
-
-    model = build_model()
+    model = build_model_helper()
 
     model.fit(
         X_train_scaled, y_train_scaled,
         validation_data=(X_val_scaled, y_val_scaled),
-        epochs=EPOCHS,
-        batch_size=BATCHSIZE,
-        callbacks=callbacks
+        epochs=config.EPOCHS,
+        batch_size=config.BATCHSIZE,
+        callbacks=config.STANDARD_CALLBACKS(model_dir),
     )
 
     test_results = model.evaluate(X_test_scaled, y_test_scaled, verbose=1)
@@ -183,7 +103,7 @@ def main():
         }
     }
 
-    with open(os.path.join(CHECKPOINT_DIRECTORY, f"results_{RUN_ID}.json"), 'w') as f:
+    with open(os.path.join(model_dir, "results.json"), 'w') as f:
         json.dump(results_dict, f, indent=4)
 
 
