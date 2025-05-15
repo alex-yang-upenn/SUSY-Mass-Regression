@@ -17,7 +17,7 @@ from utils import *
 from plotting import *
 
 def main():
-    # Predictions given by model
+    # Predictions given by gnn_baseline model
     _, _, _, _, X_test, y_test = load_data(config.PROCESSED_DATA_DIRECTORY)
 
     model_path = os.path.join(config.ROOT_DIR, "gnn_baseline", f"model_{config.RUN_ID}", "best_model.keras")

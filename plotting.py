@@ -5,9 +5,36 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+COLORS = ["blue", "red", "yellow", "magenta", "cyan"]
+
+
 def create_1var_histogram_with_marker(data, data_label, marker, marker_label, title, x_label, filename):
     """
-    Creates a histogram from one dataset with a vertical marker line and saves it to a file. Uses 200 bins
+    Generates a histogram visualization with 200 bins and includes several reference lines:
+    - The main marker line (red dashed)
+    - The mean value (blue dashed)
+    - ±1 standard deviation ranges (light blue dotted)
+    
+    Args:
+        data (array-like):
+            The data to plot in the histogram
+        data_label (str):
+            Label for the data series in the legend
+        marker (float): 
+            Position for the vertical marker line (red dashed line)
+        marker_label (str):
+            Label for the marker line in the legend
+        title (str):
+            Title for the histogram
+        x_label (str):
+            Label for the x-axis
+        filename (str):
+            Path where the figure will be saved
+        
+    Returns:
+        None:
+            The function saves the figure to the specified filename but doesn't return any value
+
     """
     plt.style.use("default")
 
@@ -54,11 +81,35 @@ def create_1var_histogram_with_marker(data, data_label, marker, marker_label, ti
     plt.savefig(filename)
     plt.close(fig)
 
+
 def create_2var_histogram_with_marker(data1, data_label1, data2, data_label2, marker, marker_label, 
                                       title, x_label, filename):
     """
-    Creates a histogram comparing two datasets with a vertical marker line and saves it to a file. Uses 200 bins.
-    Histograms are semi-transparent (alpha=0.5) to show overlap. First dataset is blue, second is green
+    Generates a histogram comparing two datasets with a marker line and statistical references.
+   
+    Args:
+        data1 (array-like):
+            First dataset to plot (shown in blue)
+        data_label1 (str):
+            Label for the first dataset in the legend
+        data2 (array-like):
+            Second dataset to plot (shown in green)
+        data_label2 (str):
+            Label for the second dataset in the legend
+        marker (float):
+            Position for the vertical marker line (red dashed line)
+        marker_label (str):
+            Label for the marker line in the legend
+        title (str):
+            Title for the histogram
+        x_label (str):
+            Label for the x-axis
+        filename (str):
+            Path where the figure will be saved
+            
+    Returns:
+        None:
+            The function saves the figure to the specified filename but doesn't return any value
     """
     plt.style.use('default')
 
@@ -131,41 +182,59 @@ def create_2var_histogram_with_marker(data1, data_label1, data2, data_label2, ma
 
 
 def compare_performance_all(model_performance_dict, filename):
+    """
+    Generates a scatter plot comparing prediction accuracy of multiple models.
+    
+    Args:
+        model_performance_dict (dict): Dictionary where each key is a model name and value is a performance data dictionary.
+            Each model's data dictionary must contain these keys:
+              - "M_x(true)": Array of true values
+              - "mean": Array of mean predictions
+              - "+1σ": Array of upper bound predictions
+              - "-1σ": Array of lower bound predictions
+        filename (str): Path where the figure will be saved
+            
+    Returns:
+        None:
+            The function saves the figure to the specified filename but doesn't return any value
+   """
     plt.style.use("default")
     
     fig, ax = plt.subplots(figsize=(10, 8), dpi=300)
 
-    colors = cm.tab10(np.linspace(0, 1, len(model_performance_dict)))
-
     # Plot each model
     for i, (model_name, model_data) in enumerate(model_performance_dict.items()):
-        median = model_data["median"]
-        plusOneSigma = model_data["+1σ"]
-        minusOneSigma = model_data["-1σ"]
+        true_val = np.array(model_data["M_x(true)"])
+        mean = np.array(model_data["mean"])
+        plusOneSigma = np.array(model_data["+1σ"])
+        minusOneSigma = np.array(model_data["-1σ"])
 
-        model_color = colors[i]
+        model_color = COLORS[i]
 
         ax.scatter(
-            median["M_x(true)"], 
-            median["ratio"],
+            true_val, 
+            (mean / true_val),
             color=model_color,
-            alpha=0.9,
-            label=model_name + " median",
+            alpha=0.6,
+            s=5,
+            label=model_name + " mean",
         )
 
         ax.scatter(
-            plusOneSigma["M_x(true)"],
-            plusOneSigma["ratio"],
+            true_val,
+            (plusOneSigma / true_val),
             color=model_color,
-            alpha=0.65,
+            alpha=0.25,
+            s=5,
             label=model_name + " +1σ",
         )
 
         ax.scatter(
-            minusOneSigma["M_x(true)"],
-            minusOneSigma["ratio"],
+            true_val,
+            (minusOneSigma / true_val),
             color=model_color,
-            alpha=0.65,
+            alpha=0.2,
+            s=5,
             label=model_name + " -1σ",
         )
 
@@ -191,23 +260,37 @@ def compare_performance_all(model_performance_dict, filename):
 
 
 def compare_performance_single(model_performance_dict, filename):
+    """
+    Generates a line plot comparing prediction accuracy of multiple models for a single value.
+   
+    Args:
+        model_performance_dict (dict): Dictionary where each key is a model name and value is a performance data dictionary.
+            Each model's data dictionary must contain these keys:
+                - "mean": Float representing the mean prediction ratio
+                - "+1σ": Float representing the upper bound prediction ratio
+                - "-1σ": Float representing the lower bound prediction ratio
+        filename (str): Path where the figure will be saved
+            
+    Returns:
+        None: The function saves the figure to the specified filename
+    """
+    
     plt.style.use("default")
     
     fig, ax = plt.subplots(figsize=(10, 8), dpi=300)
 
-    colors = cm.tab10(np.linspace(0, 1, len(model_performance_dict)))
-
     # Plot each model
     for i, (model_name, model_data) in enumerate(model_performance_dict.items()):
+        true_val = model_data["M_x(true)"]
         mean = model_data["mean"]
         plusOneSigma = model_data["+1σ"]
         minusOneSigma = model_data["-1σ"]
 
-        model_color = colors[i]
+        model_color = COLORS[i]
 
-        ax.axhline(y=mean, color=model_color, linestyle='-', alpha=0.9, label=model_name + " mean")
-        ax.axhline(y=plusOneSigma, color=model_color, linestyle=':', alpha=0.65, label=model_name + " +1σ")
-        ax.axhline(y=minusOneSigma, color=model_color, linestyle=':', alpha=0.65, label=model_name + " -1σ")
+        ax.axhline(y=(mean / true_val), color=model_color, linestyle='-', alpha=0.9, label=model_name + " mean")
+        ax.axhline(y=(plusOneSigma / true_val), color=model_color, linestyle=':', alpha=0.65, label=model_name + " +1σ")
+        ax.axhline(y=(minusOneSigma / true_val), color=model_color, linestyle=':', alpha=0.65, label=model_name + " -1σ")
 
     # Add a green diagonal line for the perfect prediction ratio = 1
     ax.axhline(y=1.0, color='green', linestyle='-', alpha=1.0)

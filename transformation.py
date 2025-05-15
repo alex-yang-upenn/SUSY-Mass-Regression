@@ -9,7 +9,6 @@ class ViewPairsGenerator:
         self.TRANSFORMATIONS = [
             self.identity,
             self.delete_particle,
-            self.reshuffle_particles
         ]
     
     def generate(self):
@@ -54,28 +53,6 @@ class ViewPairsGenerator:
 
         return tf.convert_to_tensor(result)
 
-
-    def reshuffle_particles(self, x):
-        """
-        Randomly change the order of particles along the last dimension
-        
-        Args:
-            x: array with shape (None, num_features, num_particles)
-        
-        Returns:
-            array with the same shape but shuffled particles
-        """
-        x_np = x.numpy()
-        batch_size, num_features, num_particles = x_np.shape
-
-        result = np.zeros_like(x_np)
-
-        for i in range(batch_size):
-            perm = np.random.permutation(num_particles)
-            result[i] = x_np[i][:, perm]
-        
-        return tf.convert_to_tensor(result)
-
     def identity(self, x):
         """
         No transformation
@@ -90,7 +67,6 @@ class ViewTransformedGenerator:
         self.TRANSFORMATIONS = [
             self.identity,
             self.delete_particle,
-            self.reshuffle_particles
         ]
     
     def generate(self):
@@ -131,28 +107,6 @@ class ViewTransformedGenerator:
             keep_indices = np.where(mask)[0]
             result[i] = x_np[i][:, keep_indices]
 
-        return tf.convert_to_tensor(result)
-
-
-    def reshuffle_particles(self, x):
-        """
-        Randomly change the order of particles along the last dimension
-        
-        Args:
-            x: array with shape (None, num_features, num_particles)
-        
-        Returns:
-            array with the same shape but shuffled particles
-        """
-        x_np = x.numpy()
-        batch_size, num_features, num_particles = x_np.shape
-
-        result = np.zeros_like(x_np)
-
-        for i in range(batch_size):
-            perm = np.random.permutation(num_particles)
-            result[i] = x_np[i][:, perm]
-        
         return tf.convert_to_tensor(result)
 
     def identity(self, x):
