@@ -8,8 +8,6 @@ class SimCLRModel(tf.keras.Model):
     def __init__(
             self,
             n_features,
-            embedding_dim,
-            output_dim,
             f_r_units, 
             f_o_units,
             phi_C_units,
@@ -20,8 +18,6 @@ class SimCLRModel(tf.keras.Model):
         
         # Store configurations
         self.n_features = n_features
-        self.embedding_dim = embedding_dim
-        self.output_dim = output_dim
         self.f_r_units = f_r_units
         self.f_o_units = f_o_units
         self.phi_C_units = phi_C_units
@@ -30,15 +26,12 @@ class SimCLRModel(tf.keras.Model):
         # Create models
         self.encoder = self._create_encoder_model(
             self.n_features,
-            self.embedding_dim,
             self.f_r_units,
             self.f_o_units,
             self.phi_C_units
         )
         
         self.projection_head = self._create_projection_head(
-            self.embedding_dim,
-            self.output_dim,
             self.proj_units
         )
     
@@ -70,7 +63,6 @@ class SimCLRModel(tf.keras.Model):
     def _create_encoder_model(
             self,
             n_features,
-            embedding_dim,
             f_r_units, 
             f_o_units,
             phi_C_units
@@ -78,7 +70,7 @@ class SimCLRModel(tf.keras.Model):
         """
         Encodes each sample into an embedding with length EMBEDDING_DIM
         """
-        input = tf.keras.layers.Input(shape=(n_features, None), dtype=tf.float32, name='encoder_input')
+        input = tf.keras.layers.Input(shape=(n_features, None), dtype=tf.float32)
         
         # Reduce graph to vector embeddings
         O_Bar = GraphEmbeddings(
@@ -96,23 +88,18 @@ class SimCLRModel(tf.keras.Model):
                 tf.keras.layers.ReLU()
             ]
         ])(O_Bar)
-        
-        dense = tf.keras.layers.Dense(units=embedding_dim)(phi_C)
-        output = tf.keras.layers.BatchNormalization()(dense)
 
-        return tf.keras.Model(inputs=input, outputs=output, name='encoder')
+        return tf.keras.Model(inputs=input, outputs=phi_C)
 
 
     def _create_projection_head(
             self,
-            embedding_dim,
-            output_dim,
             proj_units,
     ):
         """
-        Projection head to be applied to embeddings. Shown in simCLR paper to improve performance.
+        Helper function to create Projection Head. to be applied to embeddings. Shown in simCLR paper to improve performance.
         """
-        proj_input = tf.keras.layers.Input(shape=(embedding_dim,), dtype=tf.float32, name='proj_input')
+        proj_input = tf.keras.layers.Input(shape=(self.phi_C_units[-1],), dtype=tf.float32)
         
         proj_function = tf.keras.Sequential([
             layer
@@ -124,10 +111,7 @@ class SimCLRModel(tf.keras.Model):
             ]
         ])(proj_input)
         
-        dense = tf.keras.layers.Dense(units=output_dim)(proj_function)
-        proj_output = tf.keras.layers.BatchNormalization()(dense)
-        
-        projection_model = tf.keras.Model(inputs=proj_input, outputs=proj_output, name='projection_head')
+        projection_model = tf.keras.Model(inputs=proj_input, outputs=proj_function)
         
         return projection_model
     
@@ -135,8 +119,6 @@ class SimCLRModel(tf.keras.Model):
         config = super().get_config()
         config.update({
             'n_features': self.n_features,
-            'embedding_dim': self.embedding_dim,
-            'output_dim': self.output_dim,
             'f_r_units': self.f_r_units,
             'f_o_units': self.f_o_units,
             'phi_C_units': self.phi_C_units,
@@ -151,21 +133,28 @@ class SimCLRModel(tf.keras.Model):
 
 def create_simclr_model(
         n_features,
-        embedding_dim,
-        output_dim,
-        f_r_units=(96, 64, 32), 
-        f_o_units=(128, 64, 32),
-        phi_C_units=(128,),
-        proj_units=(24,),
-        temp=0.1,
-        learning_rate=5e-4,
+        f_r_units, 
+        f_o_units,
+        phi_C_units,
+        proj_units,
+        temp,
+        learning_rate,
 ):
-    
-    # Create and compile model
+    """
+    Factory method to create and compile a SimCLR model
+
+    Args:
+        n_features (int): Number of features (1st dimension of sample)
+        f_r_units (tuple of int): Size of each layer in the F_R function in the GNN
+        f_o_units (tuple of int): Size of each layer in the F_O function in the GNN
+        phi_C_units (tuple of int):
+            Size of each layer in the Phi_C function in the GNN. The last entry in this tuple will become
+            the dimension of the embeddings produced by the encoder.
+        proj_units (tuple of int):
+            Size of each layer in the Projection Head
+    """
     model = SimCLRModel(
         n_features,
-        embedding_dim,
-        output_dim,
         f_r_units, 
         f_o_units,
         phi_C_units,

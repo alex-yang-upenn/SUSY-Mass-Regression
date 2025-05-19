@@ -1,14 +1,22 @@
 {
     "qX_qWY_qqqlv_X300_Y100": {
-        "best_model_1.keras_metrics": {
-            "mse": 441.6373596191406,
-            "rmse": 21.015169749948264,
-            "mae": 16.39902114868164,
+        "gnn_baseline_metrics": {
+            "mse": 397.632080078125,
+            "rmse": 19.940714131598323,
+            "mae": 15.457656860351562,
             "r2": 0.0,
-            "mean_relative_error": 0.05466340482234955,
-            "median_relative_error": 0.04373128339648247
+            "mean_relative_error": 0.051525525748729706,
+            "median_relative_error": 0.041182149201631546
         },
-        "lorentz_metrics": {
+        "gnn_transformed_metrics": {
+            "mse": 779.4429321289062,
+            "rmse": 27.91850519151959,
+            "mae": 25.991281509399414,
+            "r2": 0.0,
+            "mean_relative_error": 0.08663760125637054,
+            "median_relative_error": 0.07774678617715836
+        },
+        "lorentz_addition_metrics": {
             "mse": 3115.3389144436683,
             "rmse": 55.81522117168101,
             "mae": 33.94006056511549,
@@ -18,15 +26,23 @@
         }
     },
     "qX_qWY_qqqlv_X350_Y130": {
-        "best_model_1.keras_metrics": {
-            "mse": 342.7234802246094,
-            "rmse": 18.512792340017466,
-            "mae": 14.784029960632324,
+        "gnn_baseline_metrics": {
+            "mse": 299.5417175292969,
+            "rmse": 17.30727354407091,
+            "mae": 13.326327323913574,
             "r2": 0.0,
-            "mean_relative_error": 0.04224008694291115,
-            "median_relative_error": 0.03709176182746887
+            "mean_relative_error": 0.038075219839811325,
+            "median_relative_error": 0.03210754320025444
         },
-        "lorentz_metrics": {
+        "gnn_transformed_metrics": {
+            "mse": 665.4588012695312,
+            "rmse": 25.796488157684006,
+            "mae": 24.969181060791016,
+            "r2": 0.0,
+            "mean_relative_error": 0.07134051620960236,
+            "median_relative_error": 0.07621507346630096
+        },
+        "lorentz_addition_metrics": {
             "mse": 3371.0297956491613,
             "rmse": 58.06057005962963,
             "mae": 35.920139778860566,
@@ -36,15 +52,23 @@
         }
     },
     "qX_qWY_qqqlv_X200_Y60": {
-        "best_model_1.keras_metrics": {
-            "mse": 896.98779296875,
-            "rmse": 29.94975447259543,
-            "mae": 26.092628479003906,
+        "gnn_baseline_metrics": {
+            "mse": 886.530029296875,
+            "rmse": 29.77465414235529,
+            "mae": 26.62070083618164,
             "r2": 0.0,
-            "mean_relative_error": 0.1304631382226944,
-            "median_relative_error": 0.11485664546489716
+            "mean_relative_error": 0.13310350477695465,
+            "median_relative_error": 0.11990246176719666
         },
-        "lorentz_metrics": {
+        "gnn_transformed_metrics": {
+            "mse": 16398.537109375,
+            "rmse": 128.0567729929776,
+            "mae": 127.43598175048828,
+            "r2": 0.0,
+            "mean_relative_error": 0.637179970741272,
+            "median_relative_error": 0.6166296005249023
+        },
+        "lorentz_addition_metrics": {
             "mse": 2867.0325984304227,
             "rmse": 53.54467852579211,
             "mae": 28.666081034977907,
@@ -54,15 +78,23 @@
         }
     },
     "qX_qWY_qqqlv_X250_Y80": {
-        "best_model_1.keras_metrics": {
-            "mse": 386.417236328125,
-            "rmse": 19.65749822149617,
-            "mae": 15.20283031463623,
+        "gnn_baseline_metrics": {
+            "mse": 308.5741882324219,
+            "rmse": 17.566279863204443,
+            "mae": 13.460579872131348,
             "r2": 0.0,
-            "mean_relative_error": 0.060811322182416916,
-            "median_relative_error": 0.05123822018504143
+            "mean_relative_error": 0.053842321038246155,
+            "median_relative_error": 0.042382627725601196
         },
-        "lorentz_metrics": {
+        "gnn_transformed_metrics": {
+            "mse": 5931.87646484375,
+            "rmse": 77.0186760782328,
+            "mae": 76.31964111328125,
+            "r2": 0.0,
+            "mean_relative_error": 0.30527856945991516,
+            "median_relative_error": 0.293300598859787
+        },
+        "lorentz_addition_metrics": {
             "mse": 2473.5052414075385,
             "rmse": 49.734346697303046,
             "mae": 30.356705288924733,
@@ -72,15 +104,23 @@
         }
     },
     "qX_qWY_qqqlv_X400_Y160": {
-        "best_model_1.keras_metrics": {
-            "mse": 565.7222290039062,
-            "rmse": 23.78491599741118,
-            "mae": 16.852617263793945,
+        "gnn_baseline_metrics": {
+            "mse": 685.6604614257812,
+            "rmse": 26.185119083666226,
+            "mae": 20.20244026184082,
             "r2": 0.0,
-            "mean_relative_error": 0.042131539434194565,
-            "median_relative_error": 0.028086815029382706
+            "mean_relative_error": 0.0505061000585556,
+            "median_relative_error": 0.037974052131175995
         },
-        "lorentz_metrics": {
+        "gnn_transformed_metrics": {
+            "mse": 5577.615234375,
+            "rmse": 74.68343346669997,
+            "mae": 74.12931060791016,
+            "r2": 0.0,
+            "mean_relative_error": 0.18532328307628632,
+            "median_relative_error": 0.19168734550476074
+        },
+        "lorentz_addition_metrics": {
             "mse": 3833.7708114052352,
             "rmse": 61.917451590042326,
             "mae": 39.299334948663066,

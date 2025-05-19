@@ -1,4 +1,16 @@
+"""
+Module Name: loss_functions
+
+Description:
+    Custom Tensorflow loss functions for unsupervised contrastive learning
+
+Usage:
+Author:
+Date:
+License:
+"""
 import tensorflow as tf
+
 
 class SimCLRNTXentLoss(tf.keras.losses.Loss):
     """
@@ -6,6 +18,8 @@ class SimCLRNTXentLoss(tf.keras.losses.Loss):
     """
     def __init__(self, temp):
         """
+        Constructor
+
         Args:
             temp: Temperature parameter
         """

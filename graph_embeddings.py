@@ -1,15 +1,24 @@
+"""
+Module Name: graph_embeddings
+
+Description:
+    Custom Tensorflow layer that implements a Graph Neural Network to transform particle data to embeddings.
+    Layer architecture:
+        - Constructs adjacency matrices based on number of particles in batch
+        - Constructs B_pp, concatenation of each edge's sender and receiver features
+        - Applies trainable function f_R to each edge in B_pp to obtain E_pp hidden representation
+        - Append input and E_pp to create C_pp_D combined representation
+        - Applies trainable function f_O to obtain O_post post-interaction representation
+        - Sums over O_post columns to obtain embeddings
+Usage:
+Author:
+Date:
+License:
+"""
 import tensorflow as tf
 
 
 class GraphEmbeddings(tf.keras.layers.Layer):
-    """
-    Custom layer to implementing Graph Neural Network to calculate embeddings.
-        1. Construct B_pp, concatenation of each edge's sender and receiver features
-        2. Trainable function f_R to obtain E_pp hidden representation
-        3. Append input and E_pp to create C_pp_D combined representation
-        4. Trainable function f_O to obtain O_post post-interaction representation
-    """
-
     def __init__(self,         
                 f_r_units, 
                 f_o_units,
@@ -51,7 +60,7 @@ class GraphEmbeddings(tf.keras.layers.Layer):
         super().build(input_shape)
 
     @tf.function(reduce_retracing=True)
-    def call(self, x):
+    def call(self, x, training=None):
         n_particles = tf.shape(x)[2]
         rr, rr_t, rs = self._create_interaction_matrices(n_particles)
 
@@ -61,21 +70,21 @@ class GraphEmbeddings(tf.keras.layers.Layer):
         B_pp = tf.concat([X_dot_RR, X_dot_RS], axis=1)  # [batch_size, 2P, N_E]
         
         # Apply f_R to all edges
-        B_pp_t = tf.transpose(B_pp, perm=[0, 2, 1])     # [batch_size, N_E, 2P]
-        E_pp_t = self.f_R(B_pp_t)                       # [batch_size, N_E, D_E]
-        E_pp = tf.transpose(E_pp_t, perm=[0, 2, 1])     # [batch_size, D_E, N_E]
+        B_pp_t = tf.transpose(B_pp, perm=[0, 2, 1])         # [batch_size, N_E, 2P]
+        E_pp_t = self.f_R(B_pp_t, training=training)        # [batch_size, N_E, D_E]
+        E_pp = tf.transpose(E_pp_t, perm=[0, 2, 1])         # [batch_size, D_E, N_E]
         
         # Create combined representation for all samples
-        E_pp_bar = tf.matmul(E_pp, rr_t)                # [batch_size, D_E, N_E] × [N_E, N_O] -> [batch_size, D_E, N_O]
-        C_pp_D = tf.concat([x, E_pp_bar], axis=1)       # [batch_size, P + D_E, N_O]
+        E_pp_bar = tf.matmul(E_pp, rr_t)                    # [batch_size, D_E, N_E] × [N_E, N_O] -> [batch_size, D_E, N_O]
+        C_pp_D = tf.concat([x, E_pp_bar], axis=1)           # [batch_size, P + D_E, N_O]
 
         # Apply f_O to all nodes in batch
-        C_pp_D_t = tf.transpose(C_pp_D, perm=[0, 2, 1]) # [batch_size, N_O, P + D_E]
-        O_post_t = self.f_O(C_pp_D_t)                   # [batch_size, N_O, D_O]
-        O_post = tf.transpose(O_post_t, perm=[0, 2, 1]) # [batch_size, D_O, N_O]
+        C_pp_D_t = tf.transpose(C_pp_D, perm=[0, 2, 1])     # [batch_size, N_O, P + D_E]
+        O_post_t = self.f_O(C_pp_D_t, training=training)    # [batch_size, N_O, D_O]
+        O_post = tf.transpose(O_post_t, perm=[0, 2, 1])     # [batch_size, D_O, N_O]
 
         # Global pooling over nodes for each sample
-        return tf.reduce_sum(O_post, axis=2)            # [batch_size, D_O]
+        return tf.reduce_sum(O_post, axis=2)                # [batch_size, D_O]
     
     def compute_output_shape(self, input_shape):
         return (input_shape[0], self.output_dim)

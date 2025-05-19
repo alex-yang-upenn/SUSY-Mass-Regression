@@ -12,7 +12,9 @@ class ViewPairsGenerator:
         ]
     
     def generate(self):
-        """Generate batches with transformed pairs"""
+        """
+        Generate batches with transformed pairs. Use with TF's from_generator API.
+        """
         for x_batch, y_batch in self.dataset:
             # Create two views with random transformations
             transform1 = np.random.choice(self.TRANSFORMATIONS)
@@ -61,8 +63,18 @@ class ViewPairsGenerator:
 
 
 class ViewTransformedGenerator:
-    """Data generator that applies random transformations to create transformed views"""
+    """
+    Data generator that applies random transformations to create transformed views
+    """
     def __init__(self, dataset):
+        """
+        Constructor
+
+        Args:
+            dataset (tf.data.dataset): 
+                A Tensorflow Dataset that's batched and has signature (None, n_features, None) for X and
+                (None, 1) for y.
+        """
         self.dataset = dataset
         self.TRANSFORMATIONS = [
             self.identity,
@@ -84,11 +96,11 @@ class ViewTransformedGenerator:
         """
         Randomly delete a particle from the last dimension using vectorized operations
         
-        Parameters:
-            x: array with shape (None, num_features, num_particles)
+        Args:
+            x (numpy.ndarray): Shape of (None, num_features, num_particles)
         
         Returns:
-            array with shape (None, num_features, num_particles - 1)
+            numpy.ndarray: Shape of (None, num_features, num_particles - 1)
         """
         x_np = x.numpy()
         batch_size, num_features, num_particles = x_np.shape
@@ -154,4 +166,4 @@ def create_transformed_dataset(X, y, batchsize, n_features):
         output_signature=output_signature
     ).prefetch(tf.data.AUTOTUNE)
 
-    return transformed_dataset
+    return transformed_dataset.repeat()

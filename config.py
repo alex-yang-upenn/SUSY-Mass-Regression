@@ -29,11 +29,14 @@ GNN_BASELINE_F_O_LAYER_SIZES = (128, 64, 32)
 GNN_BASELINE_PHI_C_LAYER_SIZES = (16, 8, 4)
 GNN_BASELINE_LEARNING_RATE=5e-4
 
-SIAMESE_EMBEDDING_DIM = 16
+GNN_TRANSFORMED_LEARNING_RATE=1e-3
+
+SIAMESE_PHI_C_LAYER_SIZES = (16,)
 SIAMESE_PROJ_HEAD_LAYER_SIZES = (24, 32)
 
 BATCHSIZE = 128
 EPOCHS = 20
+SIMCLR_LOSS_TEMP = 0.1
 RUN_ID = 2
 
 def STANDARD_CALLBACKS(directory):
@@ -55,6 +58,32 @@ def STANDARD_CALLBACKS(directory):
             filepath=os.path.join(directory, "best_model.keras"),
             monitor='val_loss',
             save_best_only=True,
+        ),
+        tf.keras.callbacks.CSVLogger(
+            os.path.join(directory, "training_logs.csv"),
+            append=True,
+        )
+    ]
+
+
+def NO_STOP_CALLBACKS(directory):
+    return [
+        tf.keras.callbacks.BackupAndRestore(
+            backup_dir=os.path.join(directory, "backup"),
+        ),
+        tf.keras.callbacks.LearningRateScheduler(
+            lambda epoch, lr: lr * 0.9,
+        ),
+        tf.keras.callbacks.ModelCheckpoint(
+            filepath=os.path.join(directory, "best_model.keras"),
+            monitor='val_loss',
+            save_best_only=True,
+        ),
+        tf.keras.callbacks.ModelCheckpoint(
+            filepath=os.path.join(directory, "last_model.keras"),
+            save_best_only=False,
+            save_weights_only=False,
+            save_freq="epoch",
         ),
         tf.keras.callbacks.CSVLogger(
             os.path.join(directory, "training_logs.csv"),

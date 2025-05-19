@@ -1,3 +1,14 @@
+"""
+Module Name: loss_functions
+
+Description:
+    Plotting functions to visualize model performance
+
+Usage:
+Author:
+Date:
+License:
+"""
 import matplotlib.cm as cm
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
@@ -5,7 +16,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-COLORS = ["blue", "red", "yellow", "magenta", "cyan"]
+COLORS = ["blue", "red", "magenta", "cyan"]
 
 
 def create_1var_histogram_with_marker(data, data_label, marker, marker_label, title, x_label, filename):
