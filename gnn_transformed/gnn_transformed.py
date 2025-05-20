@@ -1,3 +1,15 @@
+"""
+Module Name: gnn_transformed
+
+Description:
+    This module trains and evaluates the same GNN model as the baseline. However, the training
+    dataset is randomly augmented with transformations that distort the particle data.
+
+Usage:
+Author:
+Date:
+License:
+"""
 import os
 import sys
 

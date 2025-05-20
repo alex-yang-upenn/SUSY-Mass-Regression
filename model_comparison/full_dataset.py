@@ -1,3 +1,15 @@
+"""
+Module Name: model_comparison/full_dataset
+
+Description:
+    This module compares each model's performance on the full, original test dataset. Performance metrics are
+    logged to metrics.json.     
+
+Usage:
+Author:
+Date:
+License:
+"""
 import os
 import sys
 

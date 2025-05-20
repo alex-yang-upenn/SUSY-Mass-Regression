@@ -1,5 +1,19 @@
+"""
+Module Name: model_comparison/transformed_same_event_type
+
+Description:
+    Identical evaluation as same_event_type, a file by file comparison of models' performance. However, this module
+    first applies an augmentation to the input data.
+
+Usage:
+Author:
+Date:
+License:
+"""
 import os
 import sys
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SCRIPT_DIR)
@@ -34,10 +48,19 @@ def main():
     
     gnn_baseline_model_path = os.path.join(ROOT_DIR, "gnn_baseline", f"model_{config.RUN_ID}", "best_model.keras")
     gnn_baseline_model = tf.keras.models.load_model(gnn_baseline_model_path)
+
+    gnn_transformed_model_path = os.path.join(ROOT_DIR, "gnn_transformed", f"model_{config.RUN_ID}", "best_model.keras")
+    gnn_transformed_model = tf.keras.models.load_model(gnn_transformed_model_path)
     
     # Setup model performance dictionary
     model_performance_dict = {
         "gnn_baseline": {
+            "M_x(true)": [],
+            "mean": [],
+            "+1σ": [],
+            "-1σ": [],
+        },
+        "gnn_transformed": {
             "M_x(true)": [],
             "mean": [],
             "+1σ": [],
@@ -55,25 +78,29 @@ def main():
     same_event_type_metrics = {}
     
     # Iterate across each file
-    for name in os.listdir(os.path.join(config.PROCESSED_DATA_DIRECTORY, "test")):
+    progress_bar = tqdm(os.listdir(os.path.join(config.PROCESSED_DATA_DIRECTORY, "test")))
+    for name in progress_bar:
+        progress_bar.set_description(f"Processing file {name}")
+        
         # Load in unscaled/untransposed data
-        print(f"Processing file {name}")
         test = np.load(os.path.join(config.PROCESSED_DATA_DIRECTORY, "test", name))
         X_test = test['X']
         y_test_flattened = test['y']
-        y_test = y_test_flattened.reshape(-1, 1)
 
-        # Predictions given by gnn_baseline
         X_test_scaled = scale_data(X_test, scalers, [0, 1, 2])
         X_test_scaled = X_test_scaled.transpose(0, 2, 1)
+        y_test = y_test_flattened.reshape(-1, 1)
+
+        test_batches = int(len(X_test_scaled) // config.BATCHSIZE)
         test_transformed = create_transformed_dataset(
             X_test_scaled, y_test, batchsize=config.BATCHSIZE, n_features=config.N_FEATURES
         )
-        test_batches = int(len(X_test_scaled) // config.BATCHSIZE)
+        test_transformed = test_transformed.take(test_batches)
 
+        # Predictions given by gnn_baseline
         y_gnn_baseline_list = []
         y_true_list = []
-        for features, labels in tqdm(test_transformed, desc="Processing batches", total=test_batches):
+        for features, labels in test_transformed:
             y_gnn_baseline_batch_scaled = gnn_baseline_model.predict(features, verbose=0)
             y_gnn_baseline_batch = y_scaler.inverse_transform(y_gnn_baseline_batch_scaled).flatten()
             y_gnn_baseline_list.append(y_gnn_baseline_batch)
@@ -88,18 +115,34 @@ def main():
         model_performance_dict["gnn_baseline"]["+1σ"].append(gnn_baseline_mean + gnn_baseline_std)
         model_performance_dict["gnn_baseline"]["-1σ"].append(gnn_baseline_mean - gnn_baseline_std)
 
+        # Predictions given by gnn_transformed
+        y_gnn_transformed_list = []
+        for features, labels in test_transformed:
+            y_gnn_transformed_batch_scaled = gnn_transformed_model.predict(features, verbose=0)
+            y_gnn_transformed_batch = y_scaler.inverse_transform(y_gnn_transformed_batch_scaled).flatten()
+            y_gnn_transformed_list.append(y_gnn_transformed_batch)
+        y_gnn_transformed = np.concatenate(y_gnn_transformed_list)
+        
+        gnn_transformed_mean = np.mean(y_gnn_transformed)
+        gnn_transformed_std = np.std(y_gnn_transformed)
+        model_performance_dict["gnn_transformed"]["M_x(true)"].append(y_true[0])
+        model_performance_dict["gnn_transformed"]["mean"].append(gnn_transformed_mean)
+        model_performance_dict["gnn_transformed"]["+1σ"].append(gnn_transformed_mean + gnn_transformed_std)
+        model_performance_dict["gnn_transformed"]["-1σ"].append(gnn_transformed_mean - gnn_transformed_std)
+
         # Predictions given by lorentz addition
         X_orig = X_test.transpose(0, 2, 1)
         orig_test_transformed = create_transformed_dataset(
             X_orig, y_test, batchsize=config.BATCHSIZE, n_features=config.N_FEATURES
         )
+        orig_test_transformed = orig_test_transformed.take(test_batches)
 
         y_lorentz_list = []
-        for features, labels in tqdm(orig_test_transformed, desc="Processing batches", total=test_batches):
+        for features, labels in orig_test_transformed:
             particles = features.numpy().transpose(0, 2, 1)
             particle_masses = np.zeros((particles.shape[0], particles.shape[1]))
-            y = vectorized_lorentz_addition(particles, particle_masses)
-            y_lorentz_list.append(y)
+            y_lorentz_batch = vectorized_lorentz_addition(particles, particle_masses)
+            y_lorentz_list.append(y_lorentz_batch)
         y_lorentz = np.concatenate(y_lorentz_list).flatten()
 
         lorentz_mean = np.mean(y_lorentz)
@@ -111,11 +154,13 @@ def main():
 
         # Log metrics and visualize selected event types
         if name in config.EVAL_DATA_FILES:
-            model_metrics = calculate_metrics(y_true, y_gnn_baseline, "gnn_baseline")
+            gnn_baseline_model_metrics = calculate_metrics(y_true, y_gnn_baseline, "gnn_baseline")
+            gnn_transformed_model_metrics = calculate_metrics(y_true, y_gnn_transformed, "gnn_transformed")
             lorentz_metrics = calculate_metrics(y_true, y_lorentz, "lorentz_addition")
 
             metrics = {
-                **model_metrics,
+                **gnn_baseline_model_metrics,
+                **gnn_transformed_model_metrics,
                 **lorentz_metrics
             }
             same_event_type_metrics[name[5:-4]] = metrics
@@ -130,6 +175,18 @@ def main():
                 title=f"Mass Regression for {name}",
                 x_label="Mass (GeV / c^2)",
                 filename=os.path.join(SCRIPT_DIR, f"transformed_dual_histograms/{name[5:-4]}.png")
+            )
+
+            create_2var_histogram_with_marker(
+                data1=y_gnn_transformed,
+                data_label1="GNN Transformed Prediction",
+                data2=y_gnn_baseline,
+                data_label2="GNN Baseline Prediction",
+                marker=y_true[0],
+                marker_label="True Mass",
+                title=f"Mass Regression for {name}",
+                x_label="Mass (GeV / c^2)",
+                filename=os.path.join(SCRIPT_DIR, f"transformed_dual_histograms/{name[5:-4]}_gnn.png")
             )
     
     compare_performance_all(

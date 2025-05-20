@@ -3,7 +3,8 @@ Module Name: lorentz_addition
 
 Description:
     This module handles inspecting the preprocessed numpy files, to verify that the data is correct.
-    It also attempts a naive lorentz addition of the decay chain products, with MET_eta = 0
+    It also attempts to compute unknwon particle mass with a naive lorentz addition of the decay chain
+    products (set MET_eta = 0)
 
 Usage:
 Author:

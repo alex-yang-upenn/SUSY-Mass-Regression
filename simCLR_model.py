@@ -1,3 +1,18 @@
+"""
+Module Name: SimCLR_Model
+
+Description:
+    This module provides a custom Tensorflow Model for SimCLR contrastive learning. The SimCLRModel is
+    internally composed of an encoder linked to a projection head. The encoder is a standard GNN
+    followed by dense layers. The projection head is a simple model with only dense layers. To improve
+    learning, the SimCLR loss function is applied to the output of the projection head. For downstream
+    tasks however, the embeddings produced by the encoder are used.
+
+Usage:
+Author:
+Date:
+License:
+"""
 import tensorflow as tf
 
 from graph_embeddings import *

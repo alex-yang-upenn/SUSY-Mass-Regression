@@ -2,9 +2,8 @@
 Module Name: gnn
 
 Description:
-    This module uses supervised learning to predict the mass of intermediate SUSY particles.
-    The architecture is a standard GNN, with dense layers after that outputs a single value for
-    mass.
+    This module trains and evaluates a supervised learning model to predict the mass of intermediate SUSY particles.
+    The architecture is a standard GNN, with dense layers afterwards that compute a single float value.
 
 Usage:
 Author:

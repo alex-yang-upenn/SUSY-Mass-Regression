@@ -1,9 +1,24 @@
+"""
+Module Name: transformation
+
+Description:
+    This module provides generators that augment the inputs in a dataset, for use in Contrastive Learning
+    and evaluation of model performance on distorted inputs. ViewPairsGenerator creates two
+    independently-augmented views of the same input. ViewTransformedGenerator outputs a single augmentation
+    of the input. The preferred way to use these generators is through the associated helper functions, which
+    create a pipeline through which the original Tensorflow Dataset is augmented.
+
+Usage:
+Author:
+Date:
+License:
+"""
+
 import numpy as np
 import tensorflow as tf
 
 
 class ViewPairsGenerator:
-    """Data generator that applies random transformations to create view pairs"""
     def __init__(self, dataset):
         self.dataset = dataset
         self.TRANSFORMATIONS = [

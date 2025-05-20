@@ -1,3 +1,17 @@
+"""
+Module Name: model_comparison/same_event_type
+
+Description:
+    This module compares each model's performance by event type. It evaluates the models on the original test
+    dataset, one file at a time. Artifacts include performance metrics and dual histograms for a select
+    subset of files, and an accuracy plot across all files, to visualize models' performance across different
+    event types.
+
+Usage:
+Author:
+Date:
+License:
+"""
 import os
 import sys
 
