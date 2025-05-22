@@ -1,114 +1,97 @@
+"""
+Module Name: train_downstream
+
+Description:
+    This module trains a downstream neural network on top of an encoder to predict SUSY particle
+    masses, taking advantage of the Contrastive Learning embeddings. For the first few training epochs,
+    the encoder weights are finetuned alongside the downstream neural network. The weights are
+    frozen for the rest of training.
+
+Usage:
+Author:
+Date:
+License:
+"""
 import os
-import numpy as np
-import json
-from sklearn.linear_model import LinearRegression
-import matplotlib.pyplot as plt
 import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.append(ROOT_DIR)
+
+import json
+import numpy as np
+import pickle
+from sklearn.preprocessing import StandardScaler
+import tensorflow as tf
+from tqdm import tqdm
+
+import config
+from downstream_model import FinetunedNN
 from graph_embeddings import GraphEmbeddings
-from loss_functions import SimCLRNTXentLoss
 from simCLR_model import *
 from transformation import *
-from utils import *
-from plotting import *
-
-
-# General Parameters
-DATA_DIRECTORY = os.path.join(ROOT_DIR, "processed_data")
-CHECKPOINT_DIRECTORY = os.path.join(SCRIPT_DIR, "downstream_checkpoints")
-RUN_ID = 1
-# Model Hyperparameters
-EMBEDDING_DIM = 64
-BATCHSIZE = 128
-EPOCHS = 20
-
-os.makedirs(CHECKPOINT_DIRECTORY, exist_ok=True)
+from utils import load_data
 
 
 def main():
-    train = np.load(os.path.join(SCRIPT_DIR, "train_embeddings.npz"))
-    X_train_embed = train["embeddings"]
-    y_train_scaled = train["targets"]
+    encoder_dir = os.path.join(SCRIPT_DIR, f"model_{config.RUN_ID}")
+    encoder_path = os.path.join(encoder_dir, "best_model_encoder.keras")
 
-    val = np.load(os.path.join(SCRIPT_DIR, "val_embeddings.npz"))
-    X_val_embed = val["embeddings"]
-    y_val_scaled = val["targets"]
-
-    test = np.load(os.path.join(SCRIPT_DIR, "test_embeddings.npz"))
-    X_test_embed = test["embeddings"]
-    y_test_scaled = test["targets"]
+    model_dir = os.path.join(SCRIPT_DIR, f"model_{config.RUN_ID}_downstream")
     
-    with open(os.path.join(DATA_DIRECTORY, "y_scaler.pkl"), 'rb') as f:
-        y_scaler = pickle.load(f)
+    # Load in data and create augmented pairs
+    X_train, y_train, X_val, y_val, X_test, y_test = load_data(config.PROCESSED_DATA_DIRECTORY)
 
-    # Construct Neural Network
-    input = tf.keras.layers.Input(shape=(EMBEDDING_DIM,))
-    nn = tf.keras.Sequential([
-        tf.keras.layers.Dense(32),
-        tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.ReLU(),
-        tf.keras.layers.Dense(16),
-        tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.ReLU(),
-        tf.keras.layers.Dense(8),
-        tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.ReLU(),
-    ])(input)
-    output = tf.keras.layers.Dense(1)(nn)
-    downstream_model = tf.keras.Model(inputs=input, outputs=output)
+    train_batches = int(len(X_train) // config.BATCHSIZE)
+    train_transformed = create_transformed_dataset(X_train, y_train, config.BATCHSIZE, config.N_FEATURES)
 
-    downstream_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=5e-4), loss="mse")
+    val_batches = int(len(X_val) / config.BATCHSIZE)
+    val_transformed = create_transformed_dataset(X_val, y_val, config.BATCHSIZE, config.N_FEATURES)
     
-    # Define callbacks
-    callbacks = [
-        tf.keras.callbacks.BackupAndRestore(
-            backup_dir=os.path.join(CHECKPOINT_DIRECTORY, f"backup_{RUN_ID}")
-        ),
-        tf.keras.callbacks.EarlyStopping(
-            monitor='val_loss',
-            patience=6,
-            restore_best_weights=True
-        ),
-        tf.keras.callbacks.ReduceLROnPlateau(
-            monitor='val_loss',
-            factor=0.5,
-            patience=3
-        ),
-        tf.keras.callbacks.ModelCheckpoint(
-            filepath=os.path.join(CHECKPOINT_DIRECTORY, f"best_model_{RUN_ID}.keras"),
-            monitor='val_loss',
-            save_best_only=True
-        ),
-        tf.keras.callbacks.CSVLogger(
-            os.path.join(CHECKPOINT_DIRECTORY, f"log_{RUN_ID}.csv"),
-            append=True,
-        )
-    ]
-
-    downstream_model.fit(
-        X_train_embed, y_train_scaled,
-        validation_data=(X_val_embed, y_val_scaled),
-        epochs=EPOCHS,
-        batch_size=BATCHSIZE,
-        callbacks=callbacks,
+    test_batches = int(len(X_test) // config.BATCHSIZE)
+    test_transformed = create_transformed_dataset(X_test, y_test, config.BATCHSIZE, config.N_FEATURES)
+    
+    # Create model
+    downstream_model = FinetunedNN(
+        encoder_path=encoder_path,
+        downstream_units=config.SIAMESE_DOWNSTREAM_LAYER_SIZES,
+        output_dim=1,
+        trainable_encoder=True,
+    )
+    optimizer = tf.keras.optimizers.Adam(learning_rate=config.GNN_BASELINE_LEARNING_RATE)
+    downstream_model.compile(
+        optimizer=optimizer,
+        loss='mse',
+        metrics=['mae', 'mape']
     )
 
-    y_contrastive_scaled = downstream_model.predict(X_test_embed, verbose=1)
-    
-    y_contrastive = y_scaler.inverse_transform(y_contrastive_scaled).flatten()
-    y_test = y_scaler.inverse_transform(y_test_scaled).flatten()
-    
-    downstream_train_results = calculate_metrics(y_test, y_contrastive, "Downtream_NN")
+    # Call the model once to build it
+    for inputs, _ in train_transformed.take(1):
+        _ = downstream_model(inputs)
+        break
 
-    metrics = {
-        **downstream_train_results,
+    # Train
+    downstream_model.fit(
+        train_transformed,
+        validation_data=val_transformed,
+        epochs=config.EPOCHS,
+        steps_per_epoch=train_batches,
+        validation_steps=val_batches,
+        callbacks=config.FINETUNING_CALLBACKS(model_dir),
+    )
+
+    test_results = downstream_model.evaluate(test_transformed, steps=train_batches, verbose=1)
+    results_dict = {
+        "best_model_metrics": {
+            "test_mse": float(test_results[0]),
+            "test_mae": float(test_results[1]),
+            "test_mape": float(test_results[2]),
+        }
     }
 
-    with open(os.path.join(SCRIPT_DIR, f"downstream_prediction_results_{RUN_ID}.json"), 'w') as f:
-        json.dump(metrics, f, indent=4)
+    with open(os.path.join(model_dir, f"results.json"), 'w') as f:
+        json.dump(results_dict, f, indent=4)
     
 if __name__ == "__main__":
     main()

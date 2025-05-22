@@ -53,7 +53,7 @@ class SimCLRModel(tf.keras.Model):
     def build(self, input_shape):        
         # Two inputs [view1, view2], each with shape (batch_size, n_features, None)
         self.encoder.build(input_shape[0])
-        self.projection_head.build((None, self.embedding_dim))
+        self.projection_head.build((None, self.phi_C_units[-1]))
 
         super().build(input_shape)
 
@@ -83,7 +83,15 @@ class SimCLRModel(tf.keras.Model):
             phi_C_units
     ):
         """
-        Encodes each sample into an embedding with length EMBEDDING_DIM
+        Helper function to build the encoder. 
+
+        Args:
+            n_features (int): The number of features per particle.
+            f_r_units (tuple of int): Size of each layer of the f_r function in the GNN.
+            f_o_units (tuple of int): Size of each layer of the f_o function in the GNN.
+            phi_C_units (tuple of int): 
+                Size of the dense layers following the GNN. The dimension of the embeddings
+                produced is equal to phi_C_units[-1]
         """
         input = tf.keras.layers.Input(shape=(n_features, None), dtype=tf.float32)
         
@@ -112,7 +120,13 @@ class SimCLRModel(tf.keras.Model):
             proj_units,
     ):
         """
-        Helper function to create Projection Head. to be applied to embeddings. Shown in simCLR paper to improve performance.
+        Helper function to create Projection Head to be applied to embeddings. Shown in
+        SimCLR paper to improve training.
+
+        Args:
+            proj_units (tuple of int): 
+                Size of the dense layers. The SimCLR loss is applied to the output with
+                dimensions equal to proj_units[-1]
         """
         proj_input = tf.keras.layers.Input(shape=(self.phi_C_units[-1],), dtype=tf.float32)
         

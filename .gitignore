@@ -14,4 +14,4 @@ processed_data/val/*
 
 old/*
 
-siamese/*.npz
+siamese/model*/*.npz

@@ -1,3 +1,15 @@
+"""
+Module Name: ROOT_utils
+
+Description:
+    This module provides helpful functions to work with the ROOT package and extract data
+    from ROOT files.
+
+Usage:
+Author:
+Date:
+License:
+"""
 import ROOT
 
 

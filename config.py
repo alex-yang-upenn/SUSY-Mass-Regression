@@ -2,6 +2,8 @@ import os
 import sys
 import tensorflow as tf
 
+from downstream_model import FinetuningCallback
+
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 RAW_DATA_DIRECTORY = os.path.join(ROOT_DIR, "raw_data")
 PROCESSED_DATA_DIRECTORY = os.path.join(ROOT_DIR, "processed_data")
@@ -29,10 +31,12 @@ GNN_BASELINE_F_O_LAYER_SIZES = (128, 64, 32)
 GNN_BASELINE_PHI_C_LAYER_SIZES = (16, 8, 4)
 GNN_BASELINE_LEARNING_RATE=5e-4
 
-GNN_TRANSFORMED_LEARNING_RATE=1e-3
+GNN_TRANSFORMED_LEARNING_RATE=5e-4
 
 SIAMESE_PHI_C_LAYER_SIZES = (16,)
 SIAMESE_PROJ_HEAD_LAYER_SIZES = (24, 32)
+
+SIAMESE_DOWNSTREAM_LAYER_SIZES = (8, 4)
 
 BATCHSIZE = 128
 EPOCHS = 20
@@ -73,6 +77,36 @@ def NO_STOP_CALLBACKS(directory):
         ),
         tf.keras.callbacks.LearningRateScheduler(
             lambda epoch, lr: lr * 0.9,
+        ),
+        tf.keras.callbacks.ModelCheckpoint(
+            filepath=os.path.join(directory, "best_model.keras"),
+            monitor='val_loss',
+            save_best_only=True,
+        ),
+        tf.keras.callbacks.ModelCheckpoint(
+            filepath=os.path.join(directory, "last_model.keras"),
+            save_best_only=False,
+            save_weights_only=False,
+            save_freq="epoch",
+        ),
+        tf.keras.callbacks.CSVLogger(
+            os.path.join(directory, "training_logs.csv"),
+            append=True,
+        )
+    ]
+
+
+def FINETUNING_CALLBACKS(directory):
+    return [
+        tf.keras.callbacks.BackupAndRestore(
+            backup_dir=os.path.join(directory, "backup"),
+        ),
+        FinetuningCallback(
+            freeze_epoch=2,
+            low_lr=1e-6,
+            normal_lr=5e-4,
+            lr_decay_factor=0.9,
+            verbose=1,
         ),
         tf.keras.callbacks.ModelCheckpoint(
             filepath=os.path.join(directory, "best_model.keras"),
