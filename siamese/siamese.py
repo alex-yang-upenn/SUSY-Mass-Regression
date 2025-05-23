@@ -57,7 +57,7 @@ def main():
         phi_C_units=config.SIAMESE_PHI_C_LAYER_SIZES,
         proj_units=config.SIAMESE_PROJ_HEAD_LAYER_SIZES,
         temp=config.SIMCLR_LOSS_TEMP,
-        learning_rate=config.GNN_BASELINE_LEARNING_RATE,
+        learning_rate=config.SIAMESE_LEARNING_RATE,
     )
 
     # Call the model once to build it
@@ -69,7 +69,7 @@ def main():
     simclr_model.fit(
         train_pairs,
         validation_data=val_pairs,
-        epochs=config.EPOCHS,
+        epochs=config.SIAMESE_EPOCHS,
         steps_per_epoch=train_batches,
         validation_steps=val_batches,
         callbacks=config.STANDARD_CALLBACKS(model_dir),

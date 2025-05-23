@@ -39,18 +39,10 @@ def main():
     encoder_path = os.path.join(encoder_dir, "best_model_encoder.keras")
 
     model_dir = os.path.join(SCRIPT_DIR, f"model_{config.RUN_ID}_downstream")
+    os.makedirs(model_dir, exist_ok=True)
     
-    # Load in data and create augmented pairs
+    # Load in data
     X_train, y_train, X_val, y_val, X_test, y_test = load_data(config.PROCESSED_DATA_DIRECTORY)
-
-    train_batches = int(len(X_train) // config.BATCHSIZE)
-    train_transformed = create_transformed_dataset(X_train, y_train, config.BATCHSIZE, config.N_FEATURES)
-
-    val_batches = int(len(X_val) / config.BATCHSIZE)
-    val_transformed = create_transformed_dataset(X_val, y_val, config.BATCHSIZE, config.N_FEATURES)
-    
-    test_batches = int(len(X_test) // config.BATCHSIZE)
-    test_transformed = create_transformed_dataset(X_test, y_test, config.BATCHSIZE, config.N_FEATURES)
     
     # Create model
     downstream_model = FinetunedNN(
@@ -66,22 +58,19 @@ def main():
         metrics=['mae', 'mape']
     )
 
-    # Call the model once to build it
-    for inputs, _ in train_transformed.take(1):
-        _ = downstream_model(inputs)
-        break
-
+    # Build the model with a dummy pass
+    _ = downstream_model(X_val)
+    
     # Train
     downstream_model.fit(
-        train_transformed,
-        validation_data=val_transformed,
+        X_train, y_train,
+        validation_data=(X_val, y_val),
         epochs=config.EPOCHS,
-        steps_per_epoch=train_batches,
-        validation_steps=val_batches,
+        batch_size=config.BATCHSIZE,
         callbacks=config.FINETUNING_CALLBACKS(model_dir),
     )
 
-    test_results = downstream_model.evaluate(test_transformed, steps=train_batches, verbose=1)
+    test_results = downstream_model.evaluate(X_test, y_test, verbose=1)
     results_dict = {
         "best_model_metrics": {
             "test_mse": float(test_results[0]),
