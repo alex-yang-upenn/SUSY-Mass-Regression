@@ -39,6 +39,7 @@ def main():
     encoder_path = os.path.join(encoder_dir, "best_model_encoder.keras")
 
     model_dir = os.path.join(SCRIPT_DIR, f"model_{config.RUN_ID}_downstream")
+    encoder_architecture_path = os.path.join(model_dir, "encoder_architecture.json")
     os.makedirs(model_dir, exist_ok=True)
     
     # Load in data
@@ -47,6 +48,7 @@ def main():
     # Create model
     downstream_model = FinetunedNN(
         encoder_path=encoder_path,
+        encoder_architecture_path=encoder_architecture_path,
         downstream_units=config.SIAMESE_DOWNSTREAM_LAYER_SIZES,
         output_dim=1,
         trainable_encoder=True,

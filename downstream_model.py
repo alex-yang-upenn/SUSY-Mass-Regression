@@ -11,7 +11,6 @@ Date:
 License:
 """
 import tensorflow as tf
-import os
 
 from graph_embeddings import *
 from loss_functions import *
@@ -19,25 +18,49 @@ from simCLR_model import *
 
 
 class FinetunedNN(tf.keras.Model):
-    def __init__(self, encoder_path, downstream_units, output_dim=1, trainable_encoder=True):
-        """
-        Constructor
-        
-        Args:
-            encoder_path (str): Path to the saved encoder model
-            downstream_units (tuple of int): List of units for each hidden layer in downstream model
-            output_dim (int): Dimension of the model output. 1 is used for the current data/task.
-            trainable_encoder (bool): Whether encoder weights should be trainable
-        """
-        super().__init__()
+    def __init__(
+            self,
+            encoder_path,
+            encoder_architecture_path,
+            downstream_units,
+            output_dim=1,
+            trainable_encoder=True,
+            load_from_path=True,
+            **kwargs
+        ):
+        super().__init__(**kwargs)
         
         self.encoder_path = encoder_path
+        self.encoder_architecture_path = encoder_architecture_path
         self.downstream_units = downstream_units
+        self.output_dim = output_dim
         self.trainable_encoder = trainable_encoder
         
-        self._load_encoder()
-        
-        # Create the downstream model
+        # Only load the original encoder if instantiating fresh model
+        if load_from_path:
+            self.encoder = tf.keras.models.load_model(
+                encoder_path,
+                custom_objects={
+                    "SimCLRNTXentLoss": SimCLRNTXentLoss,
+                    "GraphEmbeddings": GraphEmbeddings,
+                },
+                compile=False,
+            )
+            self.set_encoder_trainable(self.trainable_encoder)
+
+            with open(self.encoder_architecture_path, "w") as f:
+                f.write(self.encoder.to_json())
+        else:
+            with open(self.encoder_architecture_path, "r") as f:
+                self.encoder = tf.keras.models.model_from_json(
+                    f.read(),
+                    custom_objects={
+                        "SimCLRNTXentLoss": SimCLRNTXentLoss,
+                        "GraphEmbeddings": GraphEmbeddings,
+                    }
+                )
+
+        # Create downstream layers
         self.f_R = tf.keras.Sequential([
             layer
             for units in self.downstream_units
@@ -48,7 +71,6 @@ class FinetunedNN(tf.keras.Model):
             ]
         ])
         
-        self.output_dim = output_dim
         self.output_layer = tf.keras.layers.Dense(self.output_dim)
 
     def set_encoder_trainable(self, trainable):
@@ -62,24 +84,10 @@ class FinetunedNN(tf.keras.Model):
         self.encoder.trainable = trainable
         for layer in self.encoder.layers:
             layer.trainable = trainable
-    
-    def _load_encoder(self):
-        """
-        Helper method to load the encoder with custom objects
-        """
-        self.encoder = tf.keras.models.load_model(
-            self.encoder_path,
-            custom_objects={
-                "SimCLRNTXentLoss": SimCLRNTXentLoss,
-                "GraphEmbeddings": GraphEmbeddings,
-            },
-            compile=False,
-        )
-        self.set_encoder_trainable(self.trainable_encoder)
 
     def build(self, input_shape):
-        if not hasattr(self, 'encoder'):
-            self._load_encoder()
+        if not hasattr(self, "encoder"):
+            raise AttributeError("Encoder not loaded properly")
 
         dummy_input = tf.keras.layers.Input(shape=input_shape[1:])
         embeddings = self.encoder(dummy_input)
@@ -92,22 +100,21 @@ class FinetunedNN(tf.keras.Model):
 
     def call(self, inputs, training=None):
         embeddings = self.encoder(inputs, training=training)
-        
+    
         x = self.f_R(embeddings, training=training)
-        
+    
         outputs = self.output_layer(x, training=training)
-
+    
         return outputs
     
     def compute_output_shape(self, input_shape):
-        """Compute the output shape of the model"""
         return (input_shape[0], self.output_dim)
-    
+
     def get_config(self):
-        """Return model configuration for serialization"""
         config = super().get_config()
         config.update({
             'encoder_path': self.encoder_path,
+            'encoder_architecture_path': self.encoder_architecture_path,
             'downstream_units': self.downstream_units,
             'output_dim': self.output_dim,
             'trainable_encoder': self.trainable_encoder,
@@ -116,6 +123,7 @@ class FinetunedNN(tf.keras.Model):
     
     @classmethod
     def from_config(cls, config):
+        config['load_from_path'] = False
         return cls(**config)
 
 
@@ -137,20 +145,15 @@ class FinetuningCallback(tf.keras.callbacks.Callback):
         self.normal_lr = normal_lr
         self.lr_decay_factor = lr_decay_factor
         self.verbose = verbose
-        self.encoder_frozen = False
         
     def on_epoch_begin(self, epoch, logs=None):
-        """
-        Called at the beginning of each epoch to adjust learning rate and encoder trainability.
-        """
-        if epoch == self.freeze_epoch and not self.encoder_frozen:
+        if epoch == self.freeze_epoch and self.model.trainable_encoder:
             if self.verbose > 0:
                 print(f"\nEpoch {epoch + 1}: Freezing encoder weights and increasing learning rate to {self.normal_lr}")
             
             # Freeze the encoder
             if hasattr(self.model, 'set_encoder_trainable'):
                 self.model.set_encoder_trainable(False)
-                self.encoder_frozen = True
             else:
                 print("Warning: Model does not have set_encoder_trainable method")
             
@@ -171,5 +174,5 @@ class FinetuningCallback(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         if self.verbose > 0:
             current_lr = float(self.model.optimizer.learning_rate.numpy())
-            encoder_status = "frozen" if self.encoder_frozen else "trainable"
+            encoder_status = "trainable" if self.model.trainable_encoder else "frozen"
             print(f"Epoch {epoch + 1} completed - LR: {current_lr:.2e}, Encoder: {encoder_status}")
