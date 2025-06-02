@@ -15,6 +15,14 @@
         "mean_relative_error": 0.17180542647838593,
         "median_relative_error": 0.13532201945781708
     },
+    "siamese_metrics": {
+        "mse": 473.3470458984375,
+        "rmse": 21.756540301675667,
+        "mae": 15.976838111877441,
+        "r2": 0.8561724424362183,
+        "mean_relative_error": 0.05186754837632179,
+        "median_relative_error": 0.03883447125554085
+    },
     "lorentz_metrics": {
         "mse": 3452.7256216421233,
         "rmse": 58.75989807378944,

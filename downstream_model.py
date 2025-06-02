@@ -123,8 +123,11 @@ class FinetunedNN(tf.keras.Model):
     
     @classmethod
     def from_config(cls, config):
-        config['load_from_path'] = False
-        return cls(**config)
+        config_copy = config.copy()
+        config_copy['load_from_path'] = False
+        config_copy["encoder_architecture_path"] = "/home/chuhua/SUSY-Mass-Regression/siamese/model_2_downstream/encoder_architecture.json"
+
+        return cls(**config_copy)
 
 
 class FinetuningCallback(tf.keras.callbacks.Callback):

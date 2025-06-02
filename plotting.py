@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-COLORS = ["blue", "red", "magenta", "cyan"]
+COLORS = ["blue", "red", "indigo", "darkorange"]
 
 
 def create_1var_histogram_with_marker(data, data_label, marker, marker_label, title, x_label, filename):

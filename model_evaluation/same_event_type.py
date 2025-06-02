@@ -27,9 +27,12 @@ import tensorflow as tf
 from tqdm import tqdm
 
 import config
+from downstream_model import *
 from graph_embeddings import GraphEmbeddings
-from utils import *
+from loss_functions import *
 from plotting import *
+from siamese import *
+from utils import *
 
 
 def main():
@@ -52,6 +55,16 @@ def main():
     gnn_transformed_model_path = os.path.join(ROOT_DIR, "gnn_transformed", f"model_{config.RUN_ID}", "best_model.keras")
     gnn_transformed_model = tf.keras.models.load_model(gnn_transformed_model_path)
     
+    siamese_model_path = os.path.join(config.ROOT_DIR, "siamese", f"model_{config.RUN_ID}_downstream", "best_model.keras")
+    siamese_model = tf.keras.models.load_model(
+        siamese_model_path,
+        custom_objects={
+            "SimCLRNTXentLoss": SimCLRNTXentLoss,
+            "GraphEmbeddings": GraphEmbeddings,
+            "FinetunedNN": FinetunedNN,
+        },
+    )
+
     # Setup model performance dictionary
     model_performance_dict = {
         "gnn_baseline": {
@@ -61,6 +74,12 @@ def main():
             "-1σ": [],
         },
         "gnn_transformed": {
+            "M_x(true)": [],
+            "mean": [],
+            "+1σ": [],
+            "-1σ": [],
+        },
+        "siamese": {
             "M_x(true)": [],
             "mean": [],
             "+1σ": [],
@@ -110,6 +129,16 @@ def main():
         model_performance_dict["gnn_transformed"]["+1σ"].append(gnn_transformed_mean + gnn_transformed_std)
         model_performance_dict["gnn_transformed"]["-1σ"].append(gnn_transformed_mean - gnn_transformed_std)
 
+        # Prediction given by contrastive learning encoder + neural network
+        y_siamese_scaled = siamese_model.predict(X_test_scaled, verbose=0)
+        y_siamese = y_scaler.inverse_transform(y_siamese_scaled).flatten()
+        siamese_mean = np.mean(y_siamese)
+        siamese_std = np.std(y_siamese)
+        model_performance_dict["siamese"]["M_x(true)"].append(y_true[0])
+        model_performance_dict["siamese"]["mean"].append(siamese_mean)
+        model_performance_dict["siamese"]["+1σ"].append(siamese_mean + siamese_std)
+        model_performance_dict["siamese"]["-1σ"].append(siamese_mean - siamese_std)
+        
         # Predictions given by lorentz addition
         particle_masses = np.zeros((X_test.shape[0], X_test.shape[1]))
         y_lorentz = vectorized_lorentz_addition(X_test, particle_masses)
@@ -124,11 +153,13 @@ def main():
         if name in config.EVAL_DATA_FILES:
             gnn_baseline_metrics = calculate_metrics(y_true, y_gnn_baseline, "gnn_baseline")
             gnn_transformed_metrics = calculate_metrics(y_true, y_gnn_transformed, "gnn_transformed")
+            siamese_model_metrics = calculate_metrics(y_true, y_siamese, "siamese")
             lorentz_metrics = calculate_metrics(y_true, y_lorentz, "lorentz_addition")
 
             metrics = {
                 **gnn_baseline_metrics,
                 **gnn_transformed_metrics,
+                **siamese_model_metrics,
                 **lorentz_metrics
             }
             same_event_type_metrics[name[5:-4]] = metrics
@@ -155,6 +186,18 @@ def main():
                 title=f"Mass Regression for {name}",
                 x_label="Mass (GeV / c^2)",
                 filename=os.path.join(SCRIPT_DIR, f"dual_histograms/{name[5:-4]}_gnn.png")
+            )
+
+            create_2var_histogram_with_marker(
+                data1=y_gnn_baseline,
+                data_label1="GNN Baseline Prediction",
+                data2=y_siamese,
+                data_label2="Siamese Prediction",
+                marker=y_true[0],
+                marker_label="True Mass",
+                title=f"Mass Regression for {name}",
+                x_label="Mass (GeV / c^2)",
+                filename=os.path.join(SCRIPT_DIR, f"dual_histograms/{name[5:-4]}_contrastive.png")
             )
     
     compare_performance_all(
