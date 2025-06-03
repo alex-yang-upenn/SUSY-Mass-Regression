@@ -10,6 +10,7 @@ Author:
 Date:
 License:
 """
+from copy import deepcopy
 import tensorflow as tf
 
 from graph_embeddings import *
@@ -21,8 +22,8 @@ class FinetunedNN(tf.keras.Model):
     def __init__(
             self,
             encoder_path,
-            encoder_architecture_path,
             downstream_units,
+            encoder_architecture_json=None,
             output_dim=1,
             trainable_encoder=True,
             load_from_path=True,
@@ -31,11 +32,11 @@ class FinetunedNN(tf.keras.Model):
         super().__init__(**kwargs)
         
         self.encoder_path = encoder_path
-        self.encoder_architecture_path = encoder_architecture_path
         self.downstream_units = downstream_units
+        self.encoder_architecture_json = encoder_architecture_json
         self.output_dim = output_dim
         self.trainable_encoder = trainable_encoder
-        
+
         # Only load the original encoder if instantiating fresh model
         if load_from_path:
             self.encoder = tf.keras.models.load_model(
@@ -48,17 +49,17 @@ class FinetunedNN(tf.keras.Model):
             )
             self.set_encoder_trainable(self.trainable_encoder)
 
-            with open(self.encoder_architecture_path, "w") as f:
-                f.write(self.encoder.to_json())
+            # Store the architecture as JSON string in the model
+            self.encoder_architecture_json = self.encoder.to_json()
         else:
-            with open(self.encoder_architecture_path, "r") as f:
-                self.encoder = tf.keras.models.model_from_json(
-                    f.read(),
-                    custom_objects={
-                        "SimCLRNTXentLoss": SimCLRNTXentLoss,
-                        "GraphEmbeddings": GraphEmbeddings,
-                    }
-                )
+            # Load from stored JSON string
+            self.encoder = tf.keras.models.model_from_json(
+                self.encoder_architecture_json,
+                custom_objects={
+                    "SimCLRNTXentLoss": SimCLRNTXentLoss,
+                    "GraphEmbeddings": GraphEmbeddings,
+                }
+            )
 
         # Create downstream layers
         self.f_R = tf.keras.Sequential([
@@ -114,8 +115,8 @@ class FinetunedNN(tf.keras.Model):
         config = super().get_config()
         config.update({
             'encoder_path': self.encoder_path,
-            'encoder_architecture_path': self.encoder_architecture_path,
             'downstream_units': self.downstream_units,
+            'encoder_architecture_json': self.encoder_architecture_json,
             'output_dim': self.output_dim,
             'trainable_encoder': self.trainable_encoder,
         })
@@ -123,10 +124,8 @@ class FinetunedNN(tf.keras.Model):
     
     @classmethod
     def from_config(cls, config):
-        config_copy = config.copy()
-        config_copy['load_from_path'] = False
-        config_copy["encoder_architecture_path"] = "/home/chuhua/SUSY-Mass-Regression/siamese/model_2_downstream/encoder_architecture.json"
-
+        config_copy = deepcopy(config)
+        config_copy["load_from_path"] = False
         return cls(**config_copy)
 
 

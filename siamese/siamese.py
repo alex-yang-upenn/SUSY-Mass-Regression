@@ -72,7 +72,7 @@ def main():
         epochs=config.SIAMESE_EPOCHS,
         steps_per_epoch=train_batches,
         validation_steps=val_batches,
-        callbacks=config.STANDARD_CALLBACKS(model_dir),
+        callbacks=config.STANDARD_CALLBACKS(model_dir, early_stopping_patience=9),
     )
 
     train_loss = simclr_model.evaluate(train_pairs, steps=train_batches, verbose=1)

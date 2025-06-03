@@ -1,5 +1,5 @@
 """
-Module Name: train_downstream
+Module Name: train_finetune
 
 Description:
     This module trains a downstream neural network on top of an encoder to predict SUSY particle
@@ -38,7 +38,7 @@ def main():
     encoder_dir = os.path.join(SCRIPT_DIR, f"model_{config.RUN_ID}")
     encoder_path = os.path.join(encoder_dir, "best_model_encoder.keras")
 
-    model_dir = os.path.join(SCRIPT_DIR, f"model_{config.RUN_ID}_downstream")
+    model_dir = os.path.join(SCRIPT_DIR, f"model_{config.RUN_ID}_finetune")
     encoder_architecture_path = os.path.join(model_dir, "encoder_architecture.json")
     os.makedirs(model_dir, exist_ok=True)
     
@@ -69,7 +69,10 @@ def main():
         validation_data=(X_val, y_val),
         epochs=config.EPOCHS,
         batch_size=config.BATCHSIZE,
-        callbacks=config.FINETUNING_CALLBACKS(model_dir),
+        callbacks=config.FINETUNING_CALLBACKS(
+            model_dir,
+            early_stopping_patience=config.SIAMESE_EARLY_STOPPING_PATIENCE
+        ),
     )
 
     test_results = downstream_model.evaluate(X_test, y_test, verbose=1)

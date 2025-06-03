@@ -30,13 +30,15 @@ GNN_BASELINE_F_R_LAYER_SIZES = (96, 64, 32)
 GNN_BASELINE_F_O_LAYER_SIZES = (128, 64, 32)
 GNN_BASELINE_PHI_C_LAYER_SIZES = (16, 8, 4)
 GNN_BASELINE_LEARNING_RATE=5e-4
+GNN_BASELINE_EARLY_STOPPING_PATIENCE=6
 
 GNN_TRANSFORMED_LEARNING_RATE=5e-4
 GNN_TRANSFORMED_LEARNING_RATE_DECAY=0.9
 
 SIAMESE_PHI_C_LAYER_SIZES = (16,)
 SIAMESE_PROJ_HEAD_LAYER_SIZES = (24, 32)
-SIAMESE_LEARNING_RATE=1e-4
+SIAMESE_LEARNING_RATE=1e-3
+SIAMESE_EARLY_STOPPING_PATIENCE=9
 
 DOWNSTREAM_FREEZE_EPOCH=4
 DOWNSTREAM_LEARNING_RATE=1e-6
@@ -49,16 +51,16 @@ BATCHSIZE = 128
 EPOCHS = 20
 SIAMESE_EPOCHS = 30
 SIMCLR_LOSS_TEMP = 0.1
-RUN_ID = 2
+RUN_ID = 3
 
-def STANDARD_CALLBACKS(directory):
+def STANDARD_CALLBACKS(directory, early_stopping_patience=GNN_BASELINE_EARLY_STOPPING_PATIENCE):
     return [
         tf.keras.callbacks.BackupAndRestore(
             backup_dir=os.path.join(directory, "backup"),
         ),
         tf.keras.callbacks.EarlyStopping(
             monitor='val_loss',
-            patience=6,
+            patience=early_stopping_patience,
             restore_best_weights=True
         ),
         tf.keras.callbacks.ReduceLROnPlateau(
