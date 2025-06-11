@@ -48,7 +48,6 @@ def main():
     # Create model
     downstream_model = FinetunedNN(
         encoder_path=encoder_path,
-        encoder_architecture_path=encoder_architecture_path,
         downstream_units=config.SIAMESE_DOWNSTREAM_LAYER_SIZES,
         output_dim=1,
         trainable_encoder=True,
@@ -71,7 +70,6 @@ def main():
         batch_size=config.BATCHSIZE,
         callbacks=config.FINETUNING_CALLBACKS(
             model_dir,
-            early_stopping_patience=config.SIAMESE_EARLY_STOPPING_PATIENCE
         ),
     )
 

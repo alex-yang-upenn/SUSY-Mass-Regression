@@ -50,7 +50,7 @@ def main():
         output_dim=1,
         trainable_encoder=False,  # Freeze encoder weights
     )
-    optimizer = tf.keras.optimizers.Adam(learning_rate=config.GNN_BASELINE_LEARNING_RATE)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=config.DOWNSTREAM_NO_FINETUNE_LEARNING_RATE)
     downstream_model.compile(
         optimizer=optimizer,
         loss='mse',
