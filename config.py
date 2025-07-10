@@ -31,6 +31,7 @@ GNN_BASELINE_F_O_LAYER_SIZES = (128, 64, 32)
 GNN_BASELINE_PHI_C_LAYER_SIZES = (16, 8, 4)
 GNN_BASELINE_LEARNING_RATE=5e-4
 GNN_BASELINE_EARLY_STOPPING_PATIENCE=6
+GNN_BASELINE_REDUCE_LR_PATIENCE=2
 
 GNN_TRANSFORMED_LEARNING_RATE=5e-4
 GNN_TRANSFORMED_LEARNING_RATE_DECAY=0.9
@@ -38,14 +39,13 @@ GNN_TRANSFORMED_LEARNING_RATE_DECAY=0.9
 SIAMESE_PHI_C_LAYER_SIZES = (16,)
 SIAMESE_PROJ_HEAD_LAYER_SIZES = (24, 32)
 SIAMESE_LEARNING_RATE=1e-4
-SIAMESE_EARLY_STOPPING_PATIENCE=9
 
 DOWNSTREAM_FREEZE_EPOCH=3
 DOWNSTREAM_LEARNING_RATE=5e-6
-DOWNSTREAM_FROZEN_LEARNING_RATE=5e-4
+DOWNSTREAM_FROZEN_LEARNING_RATE=1e-4
 DOWNSTREAM_LR_DECAY=0.90
 
-DOWNSTREAM_NO_FINETUNE_LEARNING_RATE=1e-3
+DOWNSTREAM_NO_FINETUNE_LEARNING_RATE=1e-4
 
 SIAMESE_DOWNSTREAM_LAYER_SIZES = (8, 4)
 
@@ -53,9 +53,13 @@ BATCHSIZE = 128
 EPOCHS = 20
 SIAMESE_EPOCHS = 30
 SIMCLR_LOSS_TEMP = 0.1
-RUN_ID = 3
+RUN_ID = 2
 
-def STANDARD_CALLBACKS(directory, early_stopping_patience=GNN_BASELINE_EARLY_STOPPING_PATIENCE):
+def STANDARD_CALLBACKS(
+        directory,
+        early_stopping_patience=GNN_BASELINE_EARLY_STOPPING_PATIENCE,
+        reduce_lr_patience=GNN_BASELINE_REDUCE_LR_PATIENCE,
+    ):
     return [
         tf.keras.callbacks.BackupAndRestore(
             backup_dir=os.path.join(directory, "backup"),
@@ -68,7 +72,7 @@ def STANDARD_CALLBACKS(directory, early_stopping_patience=GNN_BASELINE_EARLY_STO
         tf.keras.callbacks.ReduceLROnPlateau(
             monitor='val_loss',
             factor=0.5,
-            patience=3,
+            patience=reduce_lr_patience,
         ),
         tf.keras.callbacks.ModelCheckpoint(
             filepath=os.path.join(directory, "best_model.keras"),

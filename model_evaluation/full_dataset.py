@@ -53,10 +53,10 @@ def main():
     y_gnn_transformed_scaled = gnn_transformed_model.predict(X_test, verbose=1)
     y_gnn_transformed = y_scaler.inverse_transform(y_gnn_transformed_scaled).flatten()
 
-    # Prediction given by contrastive learning encoder + neural network
-    siamese_model_path = os.path.join(config.ROOT_DIR, "siamese", f"model_{config.RUN_ID}_downstream", "best_model.keras")
-    siamese_model = tf.keras.models.load_model(
-        siamese_model_path,
+    # Predictions given by contrastive learning encoder + neural network (finetune and no_finetune)
+    siamese_finetune_model_path = os.path.join(config.ROOT_DIR, "siamese", f"model_3_finetune", "best_model.keras")
+    siamese_finetune_model = tf.keras.models.load_model(
+        siamese_finetune_model_path,
         custom_objects={
             "SimCLRNTXentLoss": SimCLRNTXentLoss,
             "GraphEmbeddings": GraphEmbeddings,
@@ -64,8 +64,21 @@ def main():
         },
     )
 
-    y_siamese_scaled = siamese_model.predict(X_test, verbose=1)
-    y_siamese = y_scaler.inverse_transform(y_siamese_scaled).flatten()
+    y_siamese_finetune_scaled = siamese_finetune_model.predict(X_test, verbose=1)
+    y_siamese_finetune = y_scaler.inverse_transform(y_siamese_finetune_scaled).flatten()
+
+    siamese_no_finetune_model_path = os.path.join(config.ROOT_DIR, "siamese", f"model_3_no_finetune", "best_model.keras")
+    siamese_no_finetune_model = tf.keras.models.load_model(
+        siamese_no_finetune_model_path,
+        custom_objects={
+            "SimCLRNTXentLoss": SimCLRNTXentLoss,
+            "GraphEmbeddings": GraphEmbeddings,
+            "FinetunedNN": FinetunedNN,
+        },
+    )
+
+    y_siamese_no_finetune_scaled = siamese_no_finetune_model.predict(X_test, verbose=1)
+    y_siamese_no_finetune = y_scaler.inverse_transform(y_siamese_no_finetune_scaled).flatten()
 
     # Predictions given by naive lorentz addition
     _, _, _, _, X_orig, y_orig = load_data_original(config.PROCESSED_DATA_DIRECTORY)
@@ -74,13 +87,15 @@ def main():
 
     gnn_baseline_metrics = calculate_metrics(y_true, y_gnn_baseline, "gnn_baseline")
     gnn_transformed_metrics = calculate_metrics(y_true, y_gnn_transformed, "gnn_transformed")
-    siamese_metrics = calculate_metrics(y_true, y_siamese, "siamese")
+    siamese_finetune_metrics = calculate_metrics(y_true, y_siamese_finetune, "siamese_finetune")
+    siamese_no_finetune_metrics = calculate_metrics(y_true, y_siamese_no_finetune, "siamese_no_finetune")
     lorentz_metrics = calculate_metrics(y_orig, y_lorentz, "lorentz")
 
     metrics = {
         **gnn_baseline_metrics,
         **gnn_transformed_metrics,
-        **siamese_metrics,
+        **siamese_finetune_metrics,
+        **siamese_no_finetune_metrics,
         **lorentz_metrics
     }
     with open(os.path.join(SCRIPT_DIR, "metrics.json"), 'w') as f:

@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-COLORS = ["blue", "red", "indigo", "darkorange"]
+COLORS = ["blue", "red", "indigo", "darkorange", "gold"]
 
 
 def create_1var_histogram_with_marker(data, data_label, marker, marker_label, title, x_label, filename):
@@ -221,9 +221,12 @@ def compare_performance_all(model_performance_dict, filename):
         minusOneSigma = np.array(model_data["-1σ"])
 
         model_color = COLORS[i]
+        
+        # Stagger x-values to avoid overlapping points
+        staggered_x = true_val + 2 * i
 
         ax.scatter(
-            true_val, 
+            staggered_x, 
             (mean / true_val),
             color=model_color,
             alpha=0.6,
@@ -232,7 +235,7 @@ def compare_performance_all(model_performance_dict, filename):
         )
 
         ax.scatter(
-            true_val,
+            staggered_x,
             (plusOneSigma / true_val),
             color=model_color,
             alpha=0.25,
@@ -241,7 +244,7 @@ def compare_performance_all(model_performance_dict, filename):
         )
 
         ax.scatter(
-            true_val,
+            staggered_x,
             (minusOneSigma / true_val),
             color=model_color,
             alpha=0.2,

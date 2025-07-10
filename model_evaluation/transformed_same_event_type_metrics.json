@@ -1,172 +1,212 @@
 {
     "qX_qWY_qqqlv_X300_Y100": {
         "gnn_baseline_metrics": {
-            "mse": 2006.9664306640625,
-            "rmse": 44.799178906136916,
-            "mae": 35.009498596191406,
+            "mse": 1590.7447509765625,
+            "rmse": 39.88414159758942,
+            "mae": 30.106342315673828,
             "r2": 0.0,
-            "mean_relative_error": 0.11669832468032837,
-            "median_relative_error": 0.0843655914068222
+            "mean_relative_error": 0.10035447776317596,
+            "median_relative_error": 0.06988327205181122
         },
         "gnn_transformed_metrics": {
-            "mse": 640.7783203125,
-            "rmse": 25.313599513156955,
-            "mae": 24.450307846069336,
+            "mse": 666.1505126953125,
+            "rmse": 25.8098917606276,
+            "mae": 24.82058334350586,
             "r2": 0.0,
-            "mean_relative_error": 0.08150102198123932,
-            "median_relative_error": 0.07799036800861359
+            "mean_relative_error": 0.08273527771234512,
+            "median_relative_error": 0.07796838879585266
         },
-        "siamese_metrics": {
-            "mse": 1918.322265625,
-            "rmse": 43.79865597966449,
-            "mae": 36.22651290893555,
+        "siamese_finetune_metrics": {
+            "mse": 1040.26220703125,
+            "rmse": 32.25309608442653,
+            "mae": 26.815412521362305,
             "r2": 0.0,
-            "mean_relative_error": 0.12075503915548325,
-            "median_relative_error": 0.11243555694818497
+            "mean_relative_error": 0.08938471972942352,
+            "median_relative_error": 0.08085734397172928
+        },
+        "siamese_no_finetune_metrics": {
+            "mse": 681.3651733398438,
+            "rmse": 26.102972500078295,
+            "mae": 21.687936782836914,
+            "r2": 0.0,
+            "mean_relative_error": 0.07229311764240265,
+            "median_relative_error": 0.0674670934677124
         },
         "lorentz_addition_metrics": {
-            "mse": 8688.093983941113,
-            "rmse": 93.20994573510443,
-            "mae": 70.02744786224329,
+            "mse": 5280.971218657867,
+            "rmse": 72.67029116948595,
+            "mae": 49.55990686071076,
             "r2": 0.0,
-            "mean_relative_error": 0.23342482620747765,
-            "median_relative_error": 0.1687896402121954
+            "mean_relative_error": 0.16519968953570258,
+            "median_relative_error": 0.10650047940147866
         }
     },
     "qX_qWY_qqqlv_X350_Y130": {
         "gnn_baseline_metrics": {
-            "mse": 5287.7060546875,
-            "rmse": 72.71661470865857,
-            "mae": 57.57586669921875,
+            "mse": 3350.80029296875,
+            "rmse": 57.8860975793735,
+            "mae": 39.92105484008789,
             "r2": 0.0,
-            "mean_relative_error": 0.16450248658657074,
-            "median_relative_error": 0.14332658052444458
+            "mean_relative_error": 0.1140601634979248,
+            "median_relative_error": 0.05285844951868057
         },
         "gnn_transformed_metrics": {
-            "mse": 670.0499877929688,
-            "rmse": 25.88532379154197,
-            "mae": 25.221771240234375,
+            "mse": 684.5013427734375,
+            "rmse": 26.162976565624895,
+            "mae": 25.574016571044922,
             "r2": 0.0,
-            "mean_relative_error": 0.07206220179796219,
-            "median_relative_error": 0.0761914923787117
+            "mean_relative_error": 0.07306861877441406,
+            "median_relative_error": 0.07617588341236115
         },
-        "siamese_metrics": {
-            "mse": 1848.5289306640625,
-            "rmse": 42.99452210065908,
-            "mae": 28.45077133178711,
+        "siamese_finetune_metrics": {
+            "mse": 1255.8096923828125,
+            "rmse": 35.43740527158856,
+            "mae": 24.41545295715332,
             "r2": 0.0,
-            "mean_relative_error": 0.0812879204750061,
-            "median_relative_error": 0.04421138018369675
+            "mean_relative_error": 0.06975843757390976,
+            "median_relative_error": 0.046076007187366486
+        },
+        "siamese_no_finetune_metrics": {
+            "mse": 1578.5299072265625,
+            "rmse": 39.73071742652733,
+            "mae": 33.67467498779297,
+            "r2": 0.0,
+            "mean_relative_error": 0.09621335566043854,
+            "median_relative_error": 0.09148559719324112
         },
         "lorentz_addition_metrics": {
-            "mse": 9881.067172585017,
-            "rmse": 99.40355714251385,
-            "mae": 70.91969735520901,
+            "mse": 10087.139084836099,
+            "rmse": 100.43475038469553,
+            "mae": 72.0845369099559,
             "r2": 0.0,
-            "mean_relative_error": 0.20262770672916863,
-            "median_relative_error": 0.1333544961997323
+            "mean_relative_error": 0.20595581974273117,
+            "median_relative_error": 0.13764514584126655
         }
     },
     "qX_qWY_qqqlv_X200_Y60": {
         "gnn_baseline_metrics": {
-            "mse": 1184.97265625,
-            "rmse": 34.42343179071488,
-            "mae": 29.654190063476562,
+            "mse": 1257.21875,
+            "rmse": 35.457280634589,
+            "mae": 30.28370475769043,
             "r2": 0.0,
-            "mean_relative_error": 0.14827094972133636,
-            "median_relative_error": 0.1276969462633133
+            "mean_relative_error": 0.1514185220003128,
+            "median_relative_error": 0.12775756418704987
         },
         "gnn_transformed_metrics": {
-            "mse": 15706.6455078125,
-            "rmse": 125.32615651895058,
-            "mae": 125.07978820800781,
+            "mse": 15866.8076171875,
+            "rmse": 125.96351700864619,
+            "mae": 125.6064453125,
             "r2": 0.0,
-            "mean_relative_error": 0.6253989934921265,
-            "median_relative_error": 0.6169894337654114
+            "mean_relative_error": 0.6280322074890137,
+            "median_relative_error": 0.616958737373352
         },
-        "siamese_metrics": {
-            "mse": 2816.55810546875,
-            "rmse": 53.07125498298255,
-            "mae": 42.241127014160156,
+        "siamese_finetune_metrics": {
+            "mse": 5802.7041015625,
+            "rmse": 76.17548228637939,
+            "mae": 66.69132995605469,
             "r2": 0.0,
-            "mean_relative_error": 0.2112056314945221,
-            "median_relative_error": 0.15212464332580566
+            "mean_relative_error": 0.3334566056728363,
+            "median_relative_error": 0.3112449645996094
+        },
+        "siamese_no_finetune_metrics": {
+            "mse": 11303.037109375,
+            "rmse": 106.31574252844683,
+            "mae": 104.3663558959961,
+            "r2": 0.0,
+            "mean_relative_error": 0.5218318104743958,
+            "median_relative_error": 0.5222315788269043
         },
         "lorentz_addition_metrics": {
-            "mse": 4877.438373934519,
-            "rmse": 69.83865959434301,
-            "mae": 55.02027034086255,
+            "mse": 4496.49801618892,
+            "rmse": 67.05593199851091,
+            "mae": 49.237128762600314,
             "r2": 0.0,
-            "mean_relative_error": 0.27510135170431277,
-            "median_relative_error": 0.2381870293239534
+            "mean_relative_error": 0.2461856438130016,
+            "median_relative_error": 0.19057672193919856
         }
     },
     "qX_qWY_qqqlv_X250_Y80": {
         "gnn_baseline_metrics": {
-            "mse": 495.441162109375,
-            "rmse": 22.258507634371515,
-            "mae": 18.200366973876953,
+            "mse": 388.4619140625,
+            "rmse": 19.70943718279393,
+            "mae": 15.589438438415527,
             "r2": 0.0,
-            "mean_relative_error": 0.07280147075653076,
-            "median_relative_error": 0.0658588856458664
+            "mean_relative_error": 0.06235775351524353,
+            "median_relative_error": 0.050675202161073685
         },
         "gnn_transformed_metrics": {
-            "mse": 5728.05078125,
-            "rmse": 75.68388719701176,
-            "mae": 75.20922088623047,
+            "mse": 5804.59716796875,
+            "rmse": 76.18790696671454,
+            "mae": 75.6769790649414,
             "r2": 0.0,
-            "mean_relative_error": 0.3008368909358978,
-            "median_relative_error": 0.2933739721775055
+            "mean_relative_error": 0.3027079403400421,
+            "median_relative_error": 0.2933274507522583
         },
-        "siamese_metrics": {
-            "mse": 1238.8155517578125,
-            "rmse": 35.196811670346115,
-            "mae": 25.26303482055664,
+        "siamese_finetune_metrics": {
+            "mse": 2346.94091796875,
+            "rmse": 48.44523627735497,
+            "mae": 38.76895523071289,
             "r2": 0.0,
-            "mean_relative_error": 0.10105212777853012,
-            "median_relative_error": 0.07293972373008728
+            "mean_relative_error": 0.1550758183002472,
+            "median_relative_error": 0.1296806037425995
+        },
+        "siamese_no_finetune_metrics": {
+            "mse": 3765.39111328125,
+            "rmse": 61.36278280261783,
+            "mae": 57.61498260498047,
+            "r2": 0.0,
+            "mean_relative_error": 0.23045992851257324,
+            "median_relative_error": 0.23123657703399658
         },
         "lorentz_addition_metrics": {
-            "mse": 6738.503049151041,
-            "rmse": 82.08838559230557,
-            "mae": 66.12185464908434,
+            "mse": 4563.684598469312,
+            "rmse": 67.5550486527048,
+            "mae": 46.38432310448174,
             "r2": 0.0,
-            "mean_relative_error": 0.2644874185963374,
-            "median_relative_error": 0.2416698628495398
+            "mean_relative_error": 0.18553729241792696,
+            "median_relative_error": 0.10832463461850676
         }
     },
     "qX_qWY_qqqlv_X400_Y160": {
         "gnn_baseline_metrics": {
-            "mse": 674.1997680664062,
-            "rmse": 25.96535707565768,
-            "mae": 20.02186393737793,
+            "mse": 7863.1767578125,
+            "rmse": 88.67455530090072,
+            "mae": 67.7164535522461,
             "r2": 0.0,
-            "mean_relative_error": 0.050054650753736496,
-            "median_relative_error": 0.03773811459541321
+            "mean_relative_error": 0.169291153550148,
+            "median_relative_error": 0.12343502044677734
         },
         "gnn_transformed_metrics": {
-            "mse": 5718.5986328125,
-            "rmse": 75.62141649567602,
-            "mae": 75.31598663330078,
+            "mse": 5772.84130859375,
+            "rmse": 75.97921629362698,
+            "mae": 75.7987289428711,
             "r2": 0.0,
-            "mean_relative_error": 0.18828998506069183,
-            "median_relative_error": 0.19152919948101044
+            "mean_relative_error": 0.18949683010578156,
+            "median_relative_error": 0.19150879979133606
         },
-        "siamese_metrics": {
-            "mse": 3771.990966796875,
-            "rmse": 61.41653659070067,
-            "mae": 41.63581466674805,
+        "siamese_finetune_metrics": {
+            "mse": 3468.59765625,
+            "rmse": 58.89480160633874,
+            "mae": 43.072078704833984,
             "r2": 0.0,
-            "mean_relative_error": 0.10408953577280045,
-            "median_relative_error": 0.060795895755290985
+            "mean_relative_error": 0.10768020153045654,
+            "median_relative_error": 0.07462482154369354
+        },
+        "siamese_no_finetune_metrics": {
+            "mse": 5541.1455078125,
+            "rmse": 74.43887094665327,
+            "mae": 72.02049255371094,
+            "r2": 0.0,
+            "mean_relative_error": 0.18005122244358063,
+            "median_relative_error": 0.17635448276996613
         },
         "lorentz_addition_metrics": {
-            "mse": 17855.560441002333,
-            "rmse": 133.62469996599555,
-            "mae": 105.65618328790869,
+            "mse": 15829.548915739217,
+            "rmse": 125.81553527183841,
+            "mae": 94.55749100418633,
             "r2": 0.0,
-            "mean_relative_error": 0.2641404582197718,
-            "median_relative_error": 0.2200128307017288
+            "mean_relative_error": 0.23639372751046586,
+            "median_relative_error": 0.17292739732830179
         }
     }
 }

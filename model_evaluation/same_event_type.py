@@ -55,9 +55,19 @@ def main():
     gnn_transformed_model_path = os.path.join(ROOT_DIR, "gnn_transformed", f"model_{config.RUN_ID}", "best_model.keras")
     gnn_transformed_model = tf.keras.models.load_model(gnn_transformed_model_path)
     
-    siamese_model_path = os.path.join(config.ROOT_DIR, "siamese", f"model_{config.RUN_ID}_downstream", "best_model.keras")
-    siamese_model = tf.keras.models.load_model(
-        siamese_model_path,
+    siamese_finetune_model_path = os.path.join(config.ROOT_DIR, "siamese", "model_3_finetune", "best_model.keras")
+    siamese_finetune_model = tf.keras.models.load_model(
+        siamese_finetune_model_path,
+        custom_objects={
+            "SimCLRNTXentLoss": SimCLRNTXentLoss,
+            "GraphEmbeddings": GraphEmbeddings,
+            "FinetunedNN": FinetunedNN,
+        },
+    )
+
+    siamese_no_finetune_model_path = os.path.join(config.ROOT_DIR, "siamese", "model_3_no_finetune", "best_model.keras")
+    siamese_no_finetune_model = tf.keras.models.load_model(
+        siamese_no_finetune_model_path,
         custom_objects={
             "SimCLRNTXentLoss": SimCLRNTXentLoss,
             "GraphEmbeddings": GraphEmbeddings,
@@ -79,7 +89,13 @@ def main():
             "+1σ": [],
             "-1σ": [],
         },
-        "siamese": {
+        "siamese_finetune": {
+            "M_x(true)": [],
+            "mean": [],
+            "+1σ": [],
+            "-1σ": [],
+        },
+        "siamese_no_finetune": {
             "M_x(true)": [],
             "mean": [],
             "+1σ": [],
@@ -129,15 +145,25 @@ def main():
         model_performance_dict["gnn_transformed"]["+1σ"].append(gnn_transformed_mean + gnn_transformed_std)
         model_performance_dict["gnn_transformed"]["-1σ"].append(gnn_transformed_mean - gnn_transformed_std)
 
-        # Prediction given by contrastive learning encoder + neural network
-        y_siamese_scaled = siamese_model.predict(X_test_scaled, verbose=0)
-        y_siamese = y_scaler.inverse_transform(y_siamese_scaled).flatten()
-        siamese_mean = np.mean(y_siamese)
-        siamese_std = np.std(y_siamese)
-        model_performance_dict["siamese"]["M_x(true)"].append(y_true[0])
-        model_performance_dict["siamese"]["mean"].append(siamese_mean)
-        model_performance_dict["siamese"]["+1σ"].append(siamese_mean + siamese_std)
-        model_performance_dict["siamese"]["-1σ"].append(siamese_mean - siamese_std)
+        # Prediction given by contrastive learning encoder + neural network (finetune)
+        y_siamese_finetune_scaled = siamese_finetune_model.predict(X_test_scaled, verbose=0)
+        y_siamese_finetune = y_scaler.inverse_transform(y_siamese_finetune_scaled).flatten()
+        siamese_finetune_mean = np.mean(y_siamese_finetune)
+        siamese_finetune_std = np.std(y_siamese_finetune)
+        model_performance_dict["siamese_finetune"]["M_x(true)"].append(y_true[0])
+        model_performance_dict["siamese_finetune"]["mean"].append(siamese_finetune_mean)
+        model_performance_dict["siamese_finetune"]["+1σ"].append(siamese_finetune_mean + siamese_finetune_std)
+        model_performance_dict["siamese_finetune"]["-1σ"].append(siamese_finetune_mean - siamese_finetune_std)
+
+        # Prediction given by contrastive learning encoder + neural network (no finetune)
+        y_siamese_no_finetune_scaled = siamese_no_finetune_model.predict(X_test_scaled, verbose=0)
+        y_siamese_no_finetune = y_scaler.inverse_transform(y_siamese_no_finetune_scaled).flatten()
+        siamese_no_finetune_mean = np.mean(y_siamese_no_finetune)
+        siamese_no_finetune_std = np.std(y_siamese_no_finetune)
+        model_performance_dict["siamese_no_finetune"]["M_x(true)"].append(y_true[0])
+        model_performance_dict["siamese_no_finetune"]["mean"].append(siamese_no_finetune_mean)
+        model_performance_dict["siamese_no_finetune"]["+1σ"].append(siamese_no_finetune_mean + siamese_no_finetune_std)
+        model_performance_dict["siamese_no_finetune"]["-1σ"].append(siamese_no_finetune_mean - siamese_no_finetune_std)
         
         # Predictions given by lorentz addition
         particle_masses = np.zeros((X_test.shape[0], X_test.shape[1]))
@@ -153,13 +179,15 @@ def main():
         if name in config.EVAL_DATA_FILES:
             gnn_baseline_metrics = calculate_metrics(y_true, y_gnn_baseline, "gnn_baseline")
             gnn_transformed_metrics = calculate_metrics(y_true, y_gnn_transformed, "gnn_transformed")
-            siamese_model_metrics = calculate_metrics(y_true, y_siamese, "siamese")
+            siamese_finetune_metrics = calculate_metrics(y_true, y_siamese_finetune, "siamese_finetune")
+            siamese_no_finetune_metrics = calculate_metrics(y_true, y_siamese_no_finetune, "siamese_no_finetune")
             lorentz_metrics = calculate_metrics(y_true, y_lorentz, "lorentz_addition")
 
             metrics = {
                 **gnn_baseline_metrics,
                 **gnn_transformed_metrics,
-                **siamese_model_metrics,
+                **siamese_finetune_metrics,
+                **siamese_no_finetune_metrics,
                 **lorentz_metrics
             }
             same_event_type_metrics[name[5:-4]] = metrics
@@ -189,15 +217,15 @@ def main():
             )
 
             create_2var_histogram_with_marker(
-                data1=y_gnn_baseline,
-                data_label1="GNN Baseline Prediction",
-                data2=y_siamese,
-                data_label2="Siamese Prediction",
+                data1=y_siamese_finetune,
+                data_label1="Siamese Finetune Prediction",
+                data2=y_siamese_no_finetune,
+                data_label2="Siamese No Finetune Prediction",
                 marker=y_true[0],
                 marker_label="True Mass",
                 title=f"Mass Regression for {name}",
                 x_label="Mass (GeV / c^2)",
-                filename=os.path.join(SCRIPT_DIR, f"dual_histograms/{name[5:-4]}_contrastive.png")
+                filename=os.path.join(SCRIPT_DIR, f"dual_histograms/{name[5:-4]}_finetuning.png")
             )
     
     compare_performance_all(

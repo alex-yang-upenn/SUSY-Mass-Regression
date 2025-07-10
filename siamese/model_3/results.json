@@ -1,16 +1,16 @@
 {
     "train_dataset": {
-        "contrastive_loss": 0.9224998950958252,
+        "contrastive_loss": 0.8745034337043762,
         "embeddings_shape": "(3120256, 16)",
         "target_shape": "(3120256, 1)"
     },
     "val_dataset": {
-        "contrastive_loss": 0.9255248308181763,
+        "contrastive_loss": 0.8713791370391846,
         "embeddings_shape": "(390016, 16)",
         "target_shape": "(390016, 1)"
     },
     "test_dataset": {
-        "contrastive_loss": 0.9299409985542297,
+        "contrastive_loss": 0.8775204420089722,
         "embeddings_shape": "(390144, 16)",
         "target_shape": "(390144, 1)"
     }

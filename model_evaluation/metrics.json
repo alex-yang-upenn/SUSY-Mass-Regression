@@ -15,13 +15,21 @@
         "mean_relative_error": 0.17180542647838593,
         "median_relative_error": 0.13532201945781708
     },
-    "siamese_metrics": {
-        "mse": 473.3470458984375,
-        "rmse": 21.756540301675667,
-        "mae": 15.976838111877441,
-        "r2": 0.8561724424362183,
-        "mean_relative_error": 0.05186754837632179,
-        "median_relative_error": 0.03883447125554085
+    "siamese_finetune_metrics": {
+        "mse": 629.0716552734375,
+        "rmse": 25.081300908713597,
+        "mae": 18.69578742980957,
+        "r2": 0.8088551759719849,
+        "mean_relative_error": 0.06139805167913437,
+        "median_relative_error": 0.04542205482721329
+    },
+    "siamese_no_finetune_metrics": {
+        "mse": 2876.90673828125,
+        "rmse": 53.6368039528946,
+        "mae": 44.9016227722168,
+        "r2": 0.1258455514907837,
+        "mean_relative_error": 0.15287652611732483,
+        "median_relative_error": 0.12410712242126465
     },
     "lorentz_metrics": {
         "mse": 3452.7256216421233,

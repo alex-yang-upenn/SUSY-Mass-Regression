@@ -75,10 +75,10 @@ def main():
     y_gnn_transformed = np.concatenate(y_gnn_transformed_list).flatten()
     y_true = np.concatenate(y_true_list).flatten()
 
-    # Predictions given by siamese model
-    siamese_model_path = os.path.join(config.ROOT_DIR, "siamese", f"model_{config.RUN_ID}_downstream", "best_model.keras")
-    siamese_model = tf.keras.models.load_model(
-        siamese_model_path,
+    # Predictions given by siamese finetune model
+    siamese_finetune_model_path = os.path.join(config.ROOT_DIR, "siamese", f"model_3_finetune", "best_model.keras")
+    siamese_finetune_model = tf.keras.models.load_model(
+        siamese_finetune_model_path,
         custom_objects={
             "SimCLRNTXentLoss": SimCLRNTXentLoss,
             "GraphEmbeddings": GraphEmbeddings,
@@ -86,15 +86,37 @@ def main():
         },
     )
 
-    y_siamese_list = []
+    y_siamese_finetune_list = []
     y_true_list = []
-    for features, labels in tqdm(test_transformed, desc="GNN Transformed", total=test_batches):
-        y_siamese_batch_scaled = siamese_model.predict(features, verbose=0)
-        y_siamese_batch = y_scaler.inverse_transform(y_siamese_batch_scaled)
-        y_siamese_list.append(y_siamese_batch)
+    for features, labels in tqdm(test_transformed, desc="Siamese Finetune", total=test_batches):
+        y_siamese_finetune_batch_scaled = siamese_finetune_model.predict(features, verbose=0)
+        y_siamese_finetune_batch = y_scaler.inverse_transform(y_siamese_finetune_batch_scaled)
+        y_siamese_finetune_list.append(y_siamese_finetune_batch)
         y_true_batch = y_scaler.inverse_transform(labels.numpy())
         y_true_list.append(y_true_batch)
-    y_siamese = np.concatenate(y_siamese_list).flatten()
+    y_siamese_finetune = np.concatenate(y_siamese_finetune_list).flatten()
+    y_true = np.concatenate(y_true_list).flatten()
+
+    # Predictions given by siamese no_finetune model
+    siamese_no_finetune_model_path = os.path.join(config.ROOT_DIR, "siamese", f"model_3_no_finetune", "best_model.keras")
+    siamese_no_finetune_model = tf.keras.models.load_model(
+        siamese_no_finetune_model_path,
+        custom_objects={
+            "SimCLRNTXentLoss": SimCLRNTXentLoss,
+            "GraphEmbeddings": GraphEmbeddings,
+            "FinetunedNN": FinetunedNN,
+        },
+    )
+
+    y_siamese_no_finetune_list = []
+    y_true_list = []
+    for features, labels in tqdm(test_transformed, desc="Siamese No Finetune", total=test_batches):
+        y_siamese_no_finetune_batch_scaled = siamese_no_finetune_model.predict(features, verbose=0)
+        y_siamese_no_finetune_batch = y_scaler.inverse_transform(y_siamese_no_finetune_batch_scaled)
+        y_siamese_no_finetune_list.append(y_siamese_no_finetune_batch)
+        y_true_batch = y_scaler.inverse_transform(labels.numpy())
+        y_true_list.append(y_true_batch)
+    y_siamese_no_finetune = np.concatenate(y_siamese_no_finetune_list).flatten()
     y_true = np.concatenate(y_true_list).flatten()
 
     # Predictions given by naive lorentz addition
@@ -119,13 +141,15 @@ def main():
 
     baseline_model_metrics = calculate_metrics(y_true, y_gnn_baseline, "gnn_baseline")
     transformed_model_metrics = calculate_metrics(y_true, y_gnn_transformed, "gnn_transformed")
-    siamese_model_metrics = calculate_metrics(y_true, y_siamese, "siamese")
+    siamese_finetune_model_metrics = calculate_metrics(y_true, y_siamese_finetune, "siamese_finetune")
+    siamese_no_finetune_model_metrics = calculate_metrics(y_true, y_siamese_no_finetune, "siamese_no_finetune")
     lorentz_metrics = calculate_metrics(y_lorentz_true, y_lorentz, "lorentz_addition")
 
     metrics = {
         **baseline_model_metrics,
         **transformed_model_metrics,
-        **siamese_model_metrics,
+        **siamese_finetune_model_metrics,
+        **siamese_no_finetune_model_metrics,
         **lorentz_metrics
     }
     with open(os.path.join(SCRIPT_DIR, "transformed_metrics.json"), 'w') as f:
