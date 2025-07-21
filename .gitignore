@@ -8,6 +8,9 @@ PyROOT_Tutorial/
 raw_data/**
 !raw_data/.gitkeep
 
+raw_data_background/**
+!raw_data_background/.gitkeep
+
 processed_data/test/*
 processed_data/train/*
 processed_data/val/*

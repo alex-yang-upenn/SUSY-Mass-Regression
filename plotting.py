@@ -143,7 +143,8 @@ def create_1var_histogram_with_marker(data, data_label, marker, marker_label, ti
     fig, ax = plt.subplots(figsize=(12, 6), dpi=300)
     n, bins, patches = ax.hist(npData, bins=200, range=(0, max_val), 
                                  alpha=0.5, edgecolor='black', color="blue")
-    ax.axvline(x=marker, color="red", linestyle="--", linewidth=2)
+    if marker is not None:
+        ax.axvline(x=marker, color="red", linestyle="--", linewidth=2)
     ax.axvline(x=mean_val, color="blue", linestyle="--", linewidth=2)   
     ax.axvline(x=mean_val+std_val, color="lightblue", linestyle=":", linewidth=2)
     ax.axvline(x=mean_val-std_val, color="lightblue", linestyle=":", linewidth=2)    
@@ -158,14 +159,17 @@ def create_1var_histogram_with_marker(data, data_label, marker, marker_label, ti
     ax.set_ylabel("Frequency", fontsize=10)
     
     legend_elements = [
-        # True value Marker
-        Line2D([0], [0], color="red", linestyle='--', label=f"{marker_label}: {marker}"),
         # Histogram
         Patch(color="blue", label=data_label),
         Line2D([0], [0], color="blue", linestyle=":", label=f"Mean: {mean_val:.2e}"),
         Line2D([0], [0], color="lightblue", linestyle=":", label=f"±1σ: {mean_val-std_val:.2e}, {mean_val+std_val:.2e}"),
         Patch(color="none", label=f"Median: {median_val:.2e}"),
     ]
+    if marker_label is not None:
+        legend_elements = [
+            # True value Marker
+            Line2D([0], [0], color="red", linestyle='--', label=f"{marker_label}: {marker}")
+        ] + legend_elements
     ax.legend(handles=legend_elements, fontsize=10)
 
     plt.tight_layout()
@@ -229,7 +233,8 @@ def create_2var_histogram_with_marker(data1, data_label1, data2, data_label2, ma
                                  alpha=0.5, edgecolor='black', color="green")
     
     # Add vertical lines for marker and statistics
-    ax.axvline(x=marker, color='red', linestyle='--', linewidth=2)
+    if marker is not None:
+        ax.axvline(x=marker, color='red', linestyle='--', linewidth=2)
     
     # Dataset 1 statistics (solid lines)
     ax.axvline(x=mean_val1, color='blue', linestyle='--', linewidth=2)
@@ -252,8 +257,6 @@ def create_2var_histogram_with_marker(data1, data_label1, data2, data_label2, ma
     
     # Create legend with statistical information
     legend_elements = [
-        # True value Marker
-        Line2D([0], [0], color="red", linestyle='--', label=f"{marker_label}: {marker}"),
         # Histogram 1
         Patch(color="blue", alpha=0.5, label=f"{data_label1}"),
         Line2D([0], [0], color="blue", linestyle=':', label=f"Mean: {mean_val1:.2e}"),
@@ -265,6 +268,12 @@ def create_2var_histogram_with_marker(data1, data_label1, data2, data_label2, ma
         Line2D([0], [0], color="lightgreen", linestyle=':', label=f"±1σ: {mean_val2-std_val2:.2e}, {mean_val2+std_val2:.2e}"),
         Patch(color="none", label=f"Median: {median_val2:.2e}")
     ]
+    if marker_label is not None:
+        # True value Marker
+        legend_elements = [
+            Line2D([0], [0], color="red", linestyle='--', label=f"{marker_label}: {marker}")
+        ] + legend_elements
+        
     ax.legend(handles=legend_elements, fontsize=10)
 
     plt.tight_layout()

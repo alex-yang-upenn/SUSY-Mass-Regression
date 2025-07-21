@@ -8,6 +8,9 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 RAW_DATA_DIRECTORY = os.path.join(ROOT_DIR, "raw_data")
 PROCESSED_DATA_DIRECTORY = os.path.join(ROOT_DIR, "processed_data")
 
+RAW_DATA_BACKGROUND_DIRECTORY = os.path.join(ROOT_DIR, "raw_data_background")
+PROCESSED_DATA_BACKGROUND_DIRECTORY = os.path.join(ROOT_DIR, "processed_data_background")
+
 EVAL_DATA_FILES = [
     "test_qX_qWY_qqqlv_X200_Y60.npz",
     "test_qX_qWY_qqqlv_X250_Y80.npz",
