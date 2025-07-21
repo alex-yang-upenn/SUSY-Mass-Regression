@@ -82,30 +82,35 @@ def main():
             "mean": [],
             "+1σ": [],
             "-1σ": [],
+            "sample_count": [],
         },
         "gnn_transformed": {
             "M_x(true)": [],
             "mean": [],
             "+1σ": [],
             "-1σ": [],
+            "sample_count": [],
         },
         "siamese_finetune": {
             "M_x(true)": [],
             "mean": [],
             "+1σ": [],
             "-1σ": [],
+            "sample_count": [],
         },
         "siamese_no_finetune": {
             "M_x(true)": [],
             "mean": [],
             "+1σ": [],
             "-1σ": [],
+            "sample_count": [],
         },
         "lorentz_addition": {
             "M_x(true)": [],
             "mean": [],
             "+1σ": [],
             "-1σ": [],
+            "sample_count": [],
         },
     }
 
@@ -134,6 +139,7 @@ def main():
         model_performance_dict["gnn_baseline"]["mean"].append(gnn_baseline_mean)
         model_performance_dict["gnn_baseline"]["+1σ"].append(gnn_baseline_mean + gnn_baseline_std)
         model_performance_dict["gnn_baseline"]["-1σ"].append(gnn_baseline_mean - gnn_baseline_std)
+        model_performance_dict["gnn_baseline"]["sample_count"].append(len(y_gnn_baseline))
 
         # Predictions given by gnn_transformed
         y_gnn_transformed_scaled = gnn_transformed_model.predict(X_test_scaled, verbose=0)
@@ -144,6 +150,7 @@ def main():
         model_performance_dict["gnn_transformed"]["mean"].append(gnn_transformed_mean)
         model_performance_dict["gnn_transformed"]["+1σ"].append(gnn_transformed_mean + gnn_transformed_std)
         model_performance_dict["gnn_transformed"]["-1σ"].append(gnn_transformed_mean - gnn_transformed_std)
+        model_performance_dict["gnn_transformed"]["sample_count"].append(len(y_gnn_transformed))
 
         # Prediction given by contrastive learning encoder + neural network (finetune)
         y_siamese_finetune_scaled = siamese_finetune_model.predict(X_test_scaled, verbose=0)
@@ -154,6 +161,7 @@ def main():
         model_performance_dict["siamese_finetune"]["mean"].append(siamese_finetune_mean)
         model_performance_dict["siamese_finetune"]["+1σ"].append(siamese_finetune_mean + siamese_finetune_std)
         model_performance_dict["siamese_finetune"]["-1σ"].append(siamese_finetune_mean - siamese_finetune_std)
+        model_performance_dict["siamese_finetune"]["sample_count"].append(len(y_siamese_finetune))
 
         # Prediction given by contrastive learning encoder + neural network (no finetune)
         y_siamese_no_finetune_scaled = siamese_no_finetune_model.predict(X_test_scaled, verbose=0)
@@ -164,6 +172,7 @@ def main():
         model_performance_dict["siamese_no_finetune"]["mean"].append(siamese_no_finetune_mean)
         model_performance_dict["siamese_no_finetune"]["+1σ"].append(siamese_no_finetune_mean + siamese_no_finetune_std)
         model_performance_dict["siamese_no_finetune"]["-1σ"].append(siamese_no_finetune_mean - siamese_no_finetune_std)
+        model_performance_dict["siamese_no_finetune"]["sample_count"].append(len(y_siamese_no_finetune))
         
         # Predictions given by lorentz addition
         particle_masses = np.zeros((X_test.shape[0], X_test.shape[1]))
@@ -174,6 +183,7 @@ def main():
         model_performance_dict["lorentz_addition"]["mean"].append(lorentz_mean)
         model_performance_dict["lorentz_addition"]["+1σ"].append(lorentz_mean + lorentz_std)
         model_performance_dict["lorentz_addition"]["-1σ"].append(lorentz_mean - lorentz_std)
+        model_performance_dict["lorentz_addition"]["sample_count"].append(len(y_lorentz))
 
         # Log metrics and visualize selected event types
         if name in config.EVAL_DATA_FILES:
@@ -228,8 +238,11 @@ def main():
                 filename=os.path.join(SCRIPT_DIR, f"dual_histograms/{name[5:-4]}_finetuning.png")
             )
     
+    # Aggregate data by M_x values to avoid multiple points per M_x
+    aggregated_model_performance_dict = aggregate_model_performance_by_mx(model_performance_dict)
+    
     compare_performance_all(
-        model_performance_dict=model_performance_dict,
+        model_performance_dict=aggregated_model_performance_dict,
         filename=os.path.join(SCRIPT_DIR, "accuracy_plots/standard_inputs.png")
     )
 

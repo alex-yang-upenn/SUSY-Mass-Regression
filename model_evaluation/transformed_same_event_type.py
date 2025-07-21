@@ -82,30 +82,35 @@ def main():
             "mean": [],
             "+1σ": [],
             "-1σ": [],
+            "sample_count": [],
         },
         "gnn_transformed": {
             "M_x(true)": [],
             "mean": [],
             "+1σ": [],
             "-1σ": [],
+            "sample_count": [],
         },
         "siamese_finetune": {
             "M_x(true)": [],
             "mean": [],
             "+1σ": [],
             "-1σ": [],
+            "sample_count": [],
         },
         "siamese_no_finetune": {
             "M_x(true)": [],
             "mean": [],
             "+1σ": [],
             "-1σ": [],
+            "sample_count": [],
         },
         "lorentz_addition": {
             "M_x(true)": [],
             "mean": [],
             "+1σ": [],
             "-1σ": [],
+            "sample_count": [],
         },
     }
 
@@ -151,6 +156,7 @@ def main():
         model_performance_dict["gnn_baseline"]["mean"].append(gnn_baseline_mean)
         model_performance_dict["gnn_baseline"]["+1σ"].append(gnn_baseline_mean + gnn_baseline_std)
         model_performance_dict["gnn_baseline"]["-1σ"].append(gnn_baseline_mean - gnn_baseline_std)
+        model_performance_dict["gnn_baseline"]["sample_count"].append(len(y_gnn_baseline))
 
         # Predictions given by gnn_transformed
         y_gnn_transformed_list = []
@@ -166,6 +172,7 @@ def main():
         model_performance_dict["gnn_transformed"]["mean"].append(gnn_transformed_mean)
         model_performance_dict["gnn_transformed"]["+1σ"].append(gnn_transformed_mean + gnn_transformed_std)
         model_performance_dict["gnn_transformed"]["-1σ"].append(gnn_transformed_mean - gnn_transformed_std)
+        model_performance_dict["gnn_transformed"]["sample_count"].append(len(y_gnn_transformed))
 
         # Prediction given by contrastive learning encoder + neural network (finetune)
         y_siamese_finetune_list = []
@@ -181,6 +188,7 @@ def main():
         model_performance_dict["siamese_finetune"]["mean"].append(siamese_finetune_mean)
         model_performance_dict["siamese_finetune"]["+1σ"].append(siamese_finetune_mean + siamese_finetune_std)
         model_performance_dict["siamese_finetune"]["-1σ"].append(siamese_finetune_mean - siamese_finetune_std)
+        model_performance_dict["siamese_finetune"]["sample_count"].append(len(y_siamese_finetune))
 
         # Prediction given by contrastive learning encoder + neural network (no finetune)
         y_siamese_no_finetune_list = []
@@ -196,6 +204,7 @@ def main():
         model_performance_dict["siamese_no_finetune"]["mean"].append(siamese_no_finetune_mean)
         model_performance_dict["siamese_no_finetune"]["+1σ"].append(siamese_no_finetune_mean + siamese_no_finetune_std)
         model_performance_dict["siamese_no_finetune"]["-1σ"].append(siamese_no_finetune_mean - siamese_no_finetune_std)
+        model_performance_dict["siamese_no_finetune"]["sample_count"].append(len(y_siamese_no_finetune))
 
         # Predictions given by lorentz addition
         X_orig = X_test.transpose(0, 2, 1)
@@ -218,6 +227,7 @@ def main():
         model_performance_dict["lorentz_addition"]["mean"].append(lorentz_mean)
         model_performance_dict["lorentz_addition"]["+1σ"].append(lorentz_mean + lorentz_std)
         model_performance_dict["lorentz_addition"]["-1σ"].append(lorentz_mean - lorentz_std)
+        model_performance_dict["lorentz_addition"]["sample_count"].append(len(y_lorentz))
 
         # Log metrics and visualize selected event types
         if name in config.EVAL_DATA_FILES:
@@ -272,16 +282,19 @@ def main():
                 filename=os.path.join(SCRIPT_DIR, f"transformed_dual_histograms/{name[5:-4]}_finetuning.png")
             )
     
+    # Aggregate data by M_x values to avoid multiple points per M_x
+    aggregated_model_performance_dict = aggregate_model_performance_by_mx(model_performance_dict)
+    
     compare_performance_all(
-        model_performance_dict=model_performance_dict,
+        model_performance_dict=aggregated_model_performance_dict,
         filename=os.path.join(SCRIPT_DIR, "accuracy_plots/transformed_inputs.png")
     )
 
     # Create subset with only siamese_finetune, siamese_no_finetune, and gnn_baseline metrics
     subset_model_performance_dict = {
-        "siamese_finetune": model_performance_dict["siamese_finetune"],
-        "siamese_no_finetune": model_performance_dict["siamese_no_finetune"],
-        "gnn_baseline": model_performance_dict["gnn_baseline"]
+        "siamese_finetune": aggregated_model_performance_dict["siamese_finetune"],
+        "siamese_no_finetune": aggregated_model_performance_dict["siamese_no_finetune"],
+        "gnn_baseline": aggregated_model_performance_dict["gnn_baseline"]
     }
     
     compare_performance_all(

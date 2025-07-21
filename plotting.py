@@ -14,9 +14,91 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 import matplotlib.pyplot as plt
 import numpy as np
+from collections import defaultdict
 
 
 COLORS = ["blue", "red", "indigo", "darkorange", "gold"]
+
+
+def aggregate_model_performance_by_mx(model_performance_dict):
+    """
+    Aggregates model performance data by M_x(true) values, combining multiple 
+    data points with the same M_x value into single aggregated points using
+    proper weighted statistics.
+    
+    Args:
+        model_performance_dict (dict): Dictionary where each key is a model name and value is a performance data dictionary.
+            Each model's data dictionary must contain these keys:
+              - "M_x(true)": List of true values
+              - "mean": List of mean predictions
+              - "+1σ": List of upper bound predictions  
+              - "-1σ": List of lower bound predictions
+              - "sample_count": List of sample counts for each prediction
+              
+    Returns:
+        dict: Aggregated dictionary with same structure but combined values for duplicate M_x(true) entries
+    """
+    aggregated_dict = {}
+    
+    for model_name, model_data in model_performance_dict.items():
+        # Group data by M_x(true) value
+        mx_groups = defaultdict(lambda: {'means': [], 'plus_sigma': [], 'minus_sigma': [], 'sample_counts': []})
+        
+        mx_true_values = model_data["M_x(true)"]
+        means = model_data["mean"]
+        plus_sigmas = model_data["+1σ"]
+        minus_sigmas = model_data["-1σ"]
+        sample_counts = model_data["sample_count"]
+        
+        for i in range(len(mx_true_values)):
+            mx_val = mx_true_values[i]
+            mx_groups[mx_val]['means'].append(means[i])
+            mx_groups[mx_val]['plus_sigma'].append(plus_sigmas[i])
+            mx_groups[mx_val]['minus_sigma'].append(minus_sigmas[i])
+            mx_groups[mx_val]['sample_counts'].append(sample_counts[i])
+        
+        # Aggregate each group using proper weighted statistics
+        aggregated_mx_true = []
+        aggregated_means = []
+        aggregated_plus_sigma = []
+        aggregated_minus_sigma = []
+        
+        for mx_val, group_data in mx_groups.items():
+            aggregated_mx_true.append(mx_val)
+            
+            means_array = np.array(group_data['means'])
+            plus_sigma_array = np.array(group_data['plus_sigma'])
+            minus_sigma_array = np.array(group_data['minus_sigma'])
+            counts_array = np.array(group_data['sample_counts'])
+            
+            # Weighted average for means
+            weighted_mean = np.average(means_array, weights=counts_array)
+            aggregated_means.append(weighted_mean)
+            
+            # For sigma bounds, we need to properly combine variances
+            # Extract std from +1σ values
+            std_values = (plus_sigma_array - means_array)  # Extract std from +1σ values
+            
+            # Proper formula for combining standard deviations from multiple groups:
+            # σ²_combined = Σ(n_i × (σ²_i + (μ_i - μ_combined)²)) / Σ(n_i)
+            variance_contributions = counts_array * (
+                std_values**2 +  # Individual variances
+                (means_array - weighted_mean)**2  # Squared deviations from combined mean
+            )
+            combined_variance = np.sum(variance_contributions) / np.sum(counts_array)
+            combined_std = np.sqrt(combined_variance)
+            
+            aggregated_plus_sigma.append(weighted_mean + combined_std)
+            aggregated_minus_sigma.append(weighted_mean - combined_std)
+        
+        aggregated_dict[model_name] = {
+            "M_x(true)": aggregated_mx_true,
+            "mean": aggregated_means,
+            "+1σ": aggregated_plus_sigma,
+            "-1σ": aggregated_minus_sigma,
+        }
+    
+    return aggregated_dict
 
 
 def create_1var_histogram_with_marker(data, data_label, marker, marker_label, title, x_label, filename):
@@ -194,7 +276,7 @@ def create_2var_histogram_with_marker(data1, data_label1, data2, data_label2, ma
 
 def compare_performance_all(model_performance_dict, filename):
     """
-    Generates a scatter plot comparing prediction accuracy of multiple models.
+    Generates an error bar plot comparing prediction accuracy of multiple models.
     
     Args:
         model_performance_dict (dict): Dictionary where each key is a model name and value is a performance data dictionary.
@@ -211,9 +293,9 @@ def compare_performance_all(model_performance_dict, filename):
    """
     plt.style.use("default")
     
-    fig, ax = plt.subplots(figsize=(10, 8), dpi=300)
+    fig, ax = plt.subplots(figsize=(12, 8), dpi=300)
 
-    # Plot each model
+    # Plot each model with error bars
     for i, (model_name, model_data) in enumerate(model_performance_dict.items()):
         true_val = np.array(model_data["M_x(true)"])
         mean = np.array(model_data["mean"])
@@ -222,50 +304,50 @@ def compare_performance_all(model_performance_dict, filename):
 
         model_color = COLORS[i]
         
-        # Stagger x-values to avoid overlapping points
-        staggered_x = true_val + 2 * i
-
-        ax.scatter(
-            staggered_x, 
-            (mean / true_val),
-            color=model_color,
-            alpha=0.6,
-            s=5,
-            label=model_name + " mean",
-        )
-
-        ax.scatter(
+        # Calculate ratios
+        mean_ratio = mean / true_val
+        plus_ratio = plusOneSigma / true_val
+        minus_ratio = minusOneSigma / true_val
+        
+        # Calculate error bar sizes (asymmetric errors)
+        upper_error = plus_ratio - mean_ratio
+        lower_error = mean_ratio - minus_ratio
+        
+        # Stagger x-values to avoid overlapping error bars
+        staggered_x = true_val + 4 * i  # Increased spacing for error bars
+        
+        # Plot error bars
+        ax.errorbar(
             staggered_x,
-            (plusOneSigma / true_val),
+            mean_ratio,
+            yerr=[lower_error, upper_error],
+            fmt='o',
             color=model_color,
-            alpha=0.25,
-            s=5,
-            label=model_name + " +1σ",
+            capsize=3,
+            capthick=1,
+            elinewidth=1.5,
+            markersize=4,
+            alpha=0.8,
+            label=model_name
         )
 
-        ax.scatter(
-            staggered_x,
-            (minusOneSigma / true_val),
-            color=model_color,
-            alpha=0.2,
-            s=5,
-            label=model_name + " -1σ",
-        )
-
-    # Add a green diagonal line for the perfect prediction ratio = 1
-    ax.axhline(y=1.0, color='green', linestyle='-', alpha=1.0)
+    # Add a green horizontal line for the perfect prediction ratio = 1
+    ax.axhline(y=1.0, color='green', linestyle='-', alpha=0.7, linewidth=2, label='Perfect prediction')
 
     # Set labels and title
-    ax.set_title("Model Prediction Accuracy Comparison", fontsize=12)
+    ax.set_title("Model Prediction Accuracy Comparison", fontsize=14)
 
-    ax.set_xlabel("M_x(true)", fontsize=10)
+    ax.set_xlabel("M_x(true) [GeV/c²]", fontsize=12)
     ax.set_xticks(np.linspace(150, 450, 7))
-    ax.set_xticklabels([f"{x:.2e}" for x in np.linspace(150, 450, 7)])
+    ax.set_xticklabels([f"{x:.0f}" for x in np.linspace(150, 450, 7)])
     
-    ax.set_ylabel("M_x(pred) / M_x(true)", fontsize=10)
+    ax.set_ylabel("M_x(pred) / M_x(true)", fontsize=12)
 
+    # Add grid for better readability
+    ax.grid(True, alpha=0.3)
+    
     # Add legend
-    ax.legend(fontsize=10)
+    ax.legend(fontsize=10, loc='best')
 
     plt.tight_layout()
 
