@@ -6,7 +6,9 @@ __pycache__
 PyROOT_Tutorial/
 
 raw_data/**
+raw_data_set2/**
 !raw_data/.gitkeep
+!raw_data_set2/.gitkeep
 
 raw_data_background/**
 !raw_data_background/.gitkeep
@@ -14,6 +16,9 @@ raw_data_background/**
 processed_data/test/*
 processed_data/train/*
 processed_data/val/*
+processed_data_set2/test/*
+processed_data_set2/train/*
+processed_data_set2/val/*
 
 old/*
 

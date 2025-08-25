@@ -13,44 +13,60 @@ License:
 import ROOT
 
 
-def extract_event_features(tree, decay_chain, MET_ids, Lepton_ids):
+def extract_event_features(tree, decay_chains, MET_ids, Lepton_ids, Gluon_ids = None):
     """
     Extracts event features. Filters out events with any |eta| > 3.4.
     
     Args:
         tree (ROOT.TTree): 
-        decay_chain (str): 
+        decay_chain (List[str]): 
             The prefix for the decay chain to extract features from. This string will be concatenated with the
             suffixes "Id", "Pt", "Eta", and "Phi" to access the corresponding branches
         MET_ids (set of int):
             Set of IDs that indicate MET particles
         Lepton_ids 
             Set of IDs that indicate Lepton particles
+        Gluon_ids 
+            Set of IDs that indicate Gluon particles
     
     Returns:
         list:
             Features for a single event, as described at the top of the file, with dimensions (p, 6)
     """
+    if Gluon_ids == None:
+        MET = [1, 0, 0]
+        Lepton = [0, 1, 0]
+        Quark = [0, 0, 1]
+    else:
+        MET = [1, 0, 0, 0]
+        Lepton = [0, 1, 0, 0]
+        Gluon = [0, 0, 1, 0]
+        Quark = [0, 0, 0, 1]
+        Gluon_ids = set()
+
     features = []
 
-    Id = list(getattr(tree, decay_chain + "Id"))
-    Pt = list(getattr(tree, decay_chain + "Pt"))
-    Eta = list(getattr(tree, decay_chain + "Eta"))
-    Phi = list(getattr(tree, decay_chain + "Phi"))
-    
-    for j in range(len(Id)):
-        if abs(Eta[j]) > 3.4:
-            return None  # Drops entire event
-        
-        if Id[j] in MET_ids:
-            one_hot = [1, 0, 0]
-            Eta[j] = 0
-        elif Id[j] in Lepton_ids:
-            one_hot = [0, 1, 0]
-        else:
-            one_hot = [0, 0, 1]
-        
-        features.append([Pt[j], Eta[j], Phi[j]] + one_hot)
+    for decay_chain in decay_chains:
+        Id = list(getattr(tree, decay_chain + "Id"))
+        Pt = list(getattr(tree, decay_chain + "Pt"))
+        Eta = list(getattr(tree, decay_chain + "Eta"))
+        Phi = list(getattr(tree, decay_chain + "Phi"))
+
+        for j in range(len(Id)):
+            if abs(Eta[j]) > 3.4:
+                return None  # Drops entire event
+            
+            if Id[j] in MET_ids:
+                one_hot = MET
+                Eta[j] = 0
+            elif Id[j] in Lepton_ids:
+                one_hot = Lepton
+            elif Id[j] in Gluon_ids:
+                one_hot = Gluon
+            else:
+                one_hot = Quark
+            
+            features.append([Pt[j], Eta[j], Phi[j]] + one_hot)
     
     return features
 
