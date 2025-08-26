@@ -5,24 +5,26 @@ import tensorflow as tf
 from downstream_model import FinetuningCallback
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-RAW_DATA_DIRECTORY = os.path.join(ROOT_DIR, "raw_data_set2")
-PROCESSED_DATA_DIRECTORY = os.path.join(ROOT_DIR, "processed_data_set2")
+RAW_DATA_DIRECTORY = os.path.join(ROOT_DIR, "raw_data")
+PROCESSED_DATA_DIRECTORY = os.path.join(ROOT_DIR, "processed_data")
+
+RAW_DATA_BACKGROUND_DIRECTORY = os.path.join(ROOT_DIR, "raw_data_background")
+PROCESSED_DATA_BACKGROUND_DIRECTORY = os.path.join(ROOT_DIR, "processed_data_background")
 
 EVAL_DATA_FILES = [
-    "test_bA_bgX_bgqqqqY_bgqqqqqqqqlv_A2500_X1000_Y500.npz",
-    "test_bA_bgX_bgqqqqY_bgqqqqqqqqlv_A3300_X1400_Y550.npz",
-    "test_bA_bgX_bgqqqqY_bgqqqqqqqqlv_A4100_X1800_Y600.npz",
-    "test_bA_bgX_bgqqqqY_bgqqqqqqqqlv_A5300_X2400_Y800.npz",
-    "test_bA_bgX_bgqqqqY_bgqqqqqqqqlv_A6500_X3000_Y1000.npz",
+    "test_qX_qWY_qqqlv_X200_Y60.npz",
+    "test_qX_qWY_qqqlv_X250_Y80.npz",
+    "test_qX_qWY_qqqlv_X300_Y100.npz",
+    "test_qX_qWY_qqqlv_X350_Y130.npz",
+    "test_qX_qWY_qqqlv_X400_Y160.npz",
 ]
 
 
-DECAY_CHAIN = ["P1", "P2"]
-N_PARTICLES = 12
-N_FEATURES = 7
+DECAY_CHAIN = ["P1"]
+N_PARTICLES = 4
+N_FEATURES = 6
 MET_IDS = set([12]) 
 LEPTON_IDS = set([11])
-GLUON_IDS = set([21])
 TRAIN_TEST_SPLIT = 0.2
 SCALABLE_FEATURES = [0, 1, 2]
 
@@ -50,11 +52,11 @@ DOWNSTREAM_NO_FINETUNE_LEARNING_RATE=1e-4
 
 SIAMESE_DOWNSTREAM_LAYER_SIZES = (8, 4)
 
-BATCHSIZE = 256
-EPOCHS = 15
-SIAMESE_EPOCHS = 20
+BATCHSIZE = 128
+EPOCHS = 20
+SIAMESE_EPOCHS = 30
 SIMCLR_LOSS_TEMP = 0.1
-RUN_ID = 1
+RUN_ID = 2
 
 def STANDARD_CALLBACKS(
         directory,
