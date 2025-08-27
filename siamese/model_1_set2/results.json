@@ -1,0 +1,17 @@
+{
+    "train_dataset": {
+        "contrastive_loss": 0.6426016688346863,
+        "embeddings_shape": "(3514880, 32)",
+        "target_shape": "(3514880, 1)"
+    },
+    "val_dataset": {
+        "contrastive_loss": 0.6398147344589233,
+        "embeddings_shape": "(439296, 32)",
+        "target_shape": "(439296, 1)"
+    },
+    "test_dataset": {
+        "contrastive_loss": 0.6364070773124695,
+        "embeddings_shape": "(439296, 32)",
+        "target_shape": "(439296, 1)"
+    }
+}
