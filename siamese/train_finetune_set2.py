@@ -26,7 +26,7 @@ from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 from tqdm import tqdm
 
-import config
+import config_set2
 from downstream_model import FinetunedNN
 from graph_embeddings import GraphEmbeddings
 from simCLR_model import *
@@ -35,23 +35,23 @@ from utils import load_data
 
 
 def main():
-    encoder_dir = os.path.join(SCRIPT_DIR, f"model_{config.RUN_ID}_set2")
+    encoder_dir = os.path.join(SCRIPT_DIR, f"model_{config_set2.RUN_ID}_set2")
     encoder_path = os.path.join(encoder_dir, "best_model_encoder.keras")
 
-    model_dir = os.path.join(SCRIPT_DIR, f"model_{config.RUN_ID}_finetune_set2")
+    model_dir = os.path.join(SCRIPT_DIR, f"model_{config_set2.RUN_ID}_finetune_set2")
     os.makedirs(model_dir, exist_ok=True)
     
     # Load in data
-    X_train, y_train, X_val, y_val, X_test, y_test = load_data(config.PROCESSED_DATA_DIRECTORY)
+    X_train, y_train, X_val, y_val, X_test, y_test = load_data(config_set2.PROCESSED_DATA_DIRECTORY)
     
     # Create model
     downstream_model = FinetunedNN(
         encoder_path=encoder_path,
-        downstream_units=config.SIAMESE_DOWNSTREAM_LAYER_SIZES,
+        downstream_units=config_set2.SIAMESE_DOWNSTREAM_LAYER_SIZES,
         output_dim=1,
         trainable_encoder=True,
     )
-    optimizer = tf.keras.optimizers.Adam(learning_rate=config.GNN_BASELINE_LEARNING_RATE)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=config_set2.GNN_BASELINE_LEARNING_RATE)
     downstream_model.compile(
         optimizer=optimizer,
         loss='mse',
@@ -65,9 +65,9 @@ def main():
     downstream_model.fit(
         X_train, y_train,
         validation_data=(X_val, y_val),
-        epochs=config.EPOCHS,
-        batch_size=config.BATCHSIZE,
-        callbacks=config.FINETUNING_CALLBACKS(model_dir),
+        epochs=config_set2.EPOCHS,
+        batch_size=config_set2.BATCHSIZE,
+        callbacks=config_set2.FINETUNING_CALLBACKS(model_dir),
     )
 
     test_results = downstream_model.evaluate(X_test, y_test, verbose=1)
