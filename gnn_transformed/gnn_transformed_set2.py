@@ -67,7 +67,7 @@ def build_model_helper():
     return model
 
 def main():
-    model_dir = os.path.join(SCRIPT_DIR, f"model_{config_set2.RUN_ID}")
+    model_dir = os.path.join(SCRIPT_DIR, f"model_{config_set2.RUN_ID}_set2")
     os.makedirs(model_dir, exist_ok=True)
 
     (
