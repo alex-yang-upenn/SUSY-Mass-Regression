@@ -75,8 +75,8 @@ def main():
         validation_steps=val_batches,
         callbacks=get_standard_callbacks(
             model_dir,
-            config['SIAMESE_EARLY_STOPPING_PATIENCE'],
-            config['SIAMESE_REDUCE_LR_PATIENCE']
+            config['GNN_BASELINE_EARLY_STOPPING_PATIENCE'],
+            config['GNN_BASELINE_REDUCE_LR_PATIENCE']
         ),
     )
 
