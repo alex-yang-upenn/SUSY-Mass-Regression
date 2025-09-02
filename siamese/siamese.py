@@ -24,7 +24,7 @@ import tensorflow as tf
 from tqdm import tqdm
 
 from callbacks import get_standard_callbacks
-from config_loader import load_config, get_dataset_type_from_args
+from config_loader import load_config
 from graph_embeddings import GraphEmbeddings
 from simCLR_model import *
 from transformation import *
