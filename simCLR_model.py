@@ -13,6 +13,7 @@ Author:
 Date:
 License:
 """
+
 import tensorflow as tf
 
 from graph_embeddings import *
@@ -21,16 +22,10 @@ from loss_functions import SimCLRNTXentLoss
 
 class SimCLRModel(tf.keras.Model):
     def __init__(
-            self,
-            n_features,
-            f_r_units, 
-            f_o_units,
-            phi_C_units,
-            proj_units,
-            **kwargs
+        self, n_features, f_r_units, f_o_units, phi_C_units, proj_units, **kwargs
     ):
         super().__init__(**kwargs)
-        
+
         # Store configurations
         self.n_features = n_features
         self.f_r_units = f_r_units
@@ -40,17 +35,12 @@ class SimCLRModel(tf.keras.Model):
 
         # Create models
         self.encoder = self._create_encoder_model(
-            self.n_features,
-            self.f_r_units,
-            self.f_o_units,
-            self.phi_C_units
+            self.n_features, self.f_r_units, self.f_o_units, self.phi_C_units
         )
-        
-        self.projection_head = self._create_projection_head(
-            self.proj_units
-        )
-    
-    def build(self, input_shape):        
+
+        self.projection_head = self._create_projection_head(self.proj_units)
+
+    def build(self, input_shape):
         # Two inputs [view1, view2], each with shape (batch_size, n_features, None)
         self.encoder.build(input_shape[0])
         self.projection_head.build((None, self.phi_C_units[-1]))
@@ -60,99 +50,97 @@ class SimCLRModel(tf.keras.Model):
     def call(self, inputs):
         # Unpack the two views
         view1, view2 = inputs
-        
+
         # Get embeddings for both views using the shared encoder.
         # Input dimension (n_features, number of particles)
         # Output dimension (embedding_dim,)
         z1 = self.encoder(view1)
         z2 = self.encoder(view2)
-        
+
         # Apply projection head to both embeddings
         # Input dimension (embedding_dim,)
         # Output dimension (output_dim,)
         p1 = self.projection_head(z1)
         p2 = self.projection_head(z2)
-        
+
         return tf.stack([p1, p2], axis=1)
-    
-    def _create_encoder_model(
-            self,
-            n_features,
-            f_r_units, 
-            f_o_units,
-            phi_C_units
-    ):
+
+    def _create_encoder_model(self, n_features, f_r_units, f_o_units, phi_C_units):
         """
-        Helper function to build the encoder. 
+        Helper function to build the encoder.
 
         Args:
             n_features (int): The number of features per particle.
             f_r_units (tuple of int): Size of each layer of the f_r function in the GNN.
             f_o_units (tuple of int): Size of each layer of the f_o function in the GNN.
-            phi_C_units (tuple of int): 
+            phi_C_units (tuple of int):
                 Size of the dense layers following the GNN. The dimension of the embeddings
                 produced is equal to phi_C_units[-1]
         """
         input = tf.keras.layers.Input(shape=(n_features, None), dtype=tf.float32)
-        
+
         # Reduce graph to vector embeddings
-        O_Bar = GraphEmbeddings(
-            f_r_units=f_r_units,
-            f_o_units=f_o_units
-        )(input)
-        
+        O_Bar = GraphEmbeddings(f_r_units=f_r_units, f_o_units=f_o_units)(input)
+
         # Trainable function phi_C to transform GNN output to final embeddings
-        phi_C = tf.keras.Sequential([
-            layer
-            for units in phi_C_units
-            for layer in [
-                tf.keras.layers.Dense(units),
-                tf.keras.layers.BatchNormalization(),
-                tf.keras.layers.ReLU()
+        phi_C = tf.keras.Sequential(
+            [
+                layer
+                for units in phi_C_units
+                for layer in [
+                    tf.keras.layers.Dense(units),
+                    tf.keras.layers.BatchNormalization(),
+                    tf.keras.layers.ReLU(),
+                ]
             ]
-        ])(O_Bar)
+        )(O_Bar)
 
         return tf.keras.Model(inputs=input, outputs=phi_C)
 
-
     def _create_projection_head(
-            self,
-            proj_units,
+        self,
+        proj_units,
     ):
         """
         Helper function to create Projection Head to be applied to embeddings. Shown in
         SimCLR paper to improve training.
 
         Args:
-            proj_units (tuple of int): 
+            proj_units (tuple of int):
                 Size of the dense layers. The SimCLR loss is applied to the output with
                 dimensions equal to proj_units[-1]
         """
-        proj_input = tf.keras.layers.Input(shape=(self.phi_C_units[-1],), dtype=tf.float32)
-        
-        proj_function = tf.keras.Sequential([
-            layer
-            for units in proj_units
-            for layer in [
-                tf.keras.layers.Dense(units),
-                tf.keras.layers.BatchNormalization(),
-                tf.keras.layers.ReLU()
+        proj_input = tf.keras.layers.Input(
+            shape=(self.phi_C_units[-1],), dtype=tf.float32
+        )
+
+        proj_function = tf.keras.Sequential(
+            [
+                layer
+                for units in proj_units
+                for layer in [
+                    tf.keras.layers.Dense(units),
+                    tf.keras.layers.BatchNormalization(),
+                    tf.keras.layers.ReLU(),
+                ]
             ]
-        ])(proj_input)
-        
+        )(proj_input)
+
         projection_model = tf.keras.Model(inputs=proj_input, outputs=proj_function)
-        
+
         return projection_model
-    
+
     def get_config(self):
         config = super().get_config()
-        config.update({
-            'n_features': self.n_features,
-            'f_r_units': self.f_r_units,
-            'f_o_units': self.f_o_units,
-            'phi_C_units': self.phi_C_units,
-            'proj_units': self.proj_units,
-        })
+        config.update(
+            {
+                "n_features": self.n_features,
+                "f_r_units": self.f_r_units,
+                "f_o_units": self.f_o_units,
+                "phi_C_units": self.phi_C_units,
+                "proj_units": self.proj_units,
+            }
+        )
         return config
 
     @classmethod
@@ -161,13 +149,13 @@ class SimCLRModel(tf.keras.Model):
 
 
 def create_simclr_model(
-        n_features,
-        f_r_units, 
-        f_o_units,
-        phi_C_units,
-        proj_units,
-        temp,
-        learning_rate,
+    n_features,
+    f_r_units,
+    f_o_units,
+    phi_C_units,
+    proj_units,
+    temp,
+    learning_rate,
 ):
     """
     Factory method to create and compile a SimCLR model
@@ -184,7 +172,7 @@ def create_simclr_model(
     """
     model = SimCLRModel(
         n_features,
-        f_r_units, 
+        f_r_units,
         f_o_units,
         phi_C_units,
         proj_units,
@@ -193,8 +181,7 @@ def create_simclr_model(
     loss_fn = SimCLRNTXentLoss(temp)
 
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
-        loss=loss_fn
+        optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate), loss=loss_fn
     )
-    
+
     return model

@@ -1,7 +1,10 @@
+black
+isort
 keras_tuner
 matplotlib
 numpy
 PyYAML
+pre-commit
 scikit-learn
 tensorflow
 tqdm

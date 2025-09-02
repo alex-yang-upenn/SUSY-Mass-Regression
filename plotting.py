@@ -9,111 +9,122 @@ Author:
 Date:
 License:
 """
-import matplotlib.cm as cm
-from matplotlib.lines import Line2D
-from matplotlib.patches import Patch
-import matplotlib.pyplot as plt
-import numpy as np
+
 from collections import defaultdict
 
+import matplotlib.cm as cm
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 
 COLORS = ["blue", "red", "indigo", "darkorange", "gold"]
 
 
 def aggregate_model_performance_by_mx(model_performance_dict):
     """
-    Aggregates model performance data by M_x(true) values, combining multiple 
+    Aggregates model performance data by M_x(true) values, combining multiple
     data points with the same M_x value into single aggregated points using
     proper weighted statistics.
-    
+
     Args:
         model_performance_dict (dict): Dictionary where each key is a model name and value is a performance data dictionary.
             Each model's data dictionary must contain these keys:
               - "M_x(true)": List of true values
               - "mean": List of mean predictions
-              - "+1σ": List of upper bound predictions  
+              - "+1σ": List of upper bound predictions
               - "-1σ": List of lower bound predictions
               - "sample_count": List of sample counts for each prediction
-              
+
     Returns:
         dict: Aggregated dictionary with same structure but combined values for duplicate M_x(true) entries
     """
     aggregated_dict = {}
-    
+
     for model_name, model_data in model_performance_dict.items():
         # Group data by M_x(true) value
-        mx_groups = defaultdict(lambda: {'means': [], 'plus_sigma': [], 'minus_sigma': [], 'sample_counts': []})
-        
+        mx_groups = defaultdict(
+            lambda: {
+                "means": [],
+                "plus_sigma": [],
+                "minus_sigma": [],
+                "sample_counts": [],
+            }
+        )
+
         mx_true_values = model_data["M_x(true)"]
         means = model_data["mean"]
         plus_sigmas = model_data["+1σ"]
         minus_sigmas = model_data["-1σ"]
         sample_counts = model_data["sample_count"]
-        
+
         for i in range(len(mx_true_values)):
             mx_val = mx_true_values[i]
-            mx_groups[mx_val]['means'].append(means[i])
-            mx_groups[mx_val]['plus_sigma'].append(plus_sigmas[i])
-            mx_groups[mx_val]['minus_sigma'].append(minus_sigmas[i])
-            mx_groups[mx_val]['sample_counts'].append(sample_counts[i])
-        
+            mx_groups[mx_val]["means"].append(means[i])
+            mx_groups[mx_val]["plus_sigma"].append(plus_sigmas[i])
+            mx_groups[mx_val]["minus_sigma"].append(minus_sigmas[i])
+            mx_groups[mx_val]["sample_counts"].append(sample_counts[i])
+
         # Aggregate each group using proper weighted statistics
         aggregated_mx_true = []
         aggregated_means = []
         aggregated_plus_sigma = []
         aggregated_minus_sigma = []
-        
+
         for mx_val, group_data in mx_groups.items():
             aggregated_mx_true.append(mx_val)
-            
-            means_array = np.array(group_data['means'])
-            plus_sigma_array = np.array(group_data['plus_sigma'])
-            minus_sigma_array = np.array(group_data['minus_sigma'])
-            counts_array = np.array(group_data['sample_counts'])
-            
+
+            means_array = np.array(group_data["means"])
+            plus_sigma_array = np.array(group_data["plus_sigma"])
+            minus_sigma_array = np.array(group_data["minus_sigma"])
+            counts_array = np.array(group_data["sample_counts"])
+
             # Weighted average for means
             weighted_mean = np.average(means_array, weights=counts_array)
             aggregated_means.append(weighted_mean)
-            
+
             # For sigma bounds, we need to properly combine variances
             # Extract std from +1σ values
-            std_values = (plus_sigma_array - means_array)  # Extract std from +1σ values
-            
+            std_values = plus_sigma_array - means_array  # Extract std from +1σ values
+
             # Proper formula for combining standard deviations from multiple groups:
             # σ²_combined = Σ(n_i × (σ²_i + (μ_i - μ_combined)²)) / Σ(n_i)
             variance_contributions = counts_array * (
-                std_values**2 +  # Individual variances
-                (means_array - weighted_mean)**2  # Squared deviations from combined mean
+                std_values**2  # Individual variances
+                + (means_array - weighted_mean)
+                ** 2  # Squared deviations from combined mean
             )
             combined_variance = np.sum(variance_contributions) / np.sum(counts_array)
             combined_std = np.sqrt(combined_variance)
-            
+
             aggregated_plus_sigma.append(weighted_mean + combined_std)
             aggregated_minus_sigma.append(weighted_mean - combined_std)
-        
+
         aggregated_dict[model_name] = {
             "M_x(true)": aggregated_mx_true,
             "mean": aggregated_means,
             "+1σ": aggregated_plus_sigma,
             "-1σ": aggregated_minus_sigma,
         }
-    
+
     return aggregated_dict
 
 
-def create_1var_histogram_with_marker(data, data_label, marker, marker_label, title, x_label, filename):
+def create_1var_histogram_with_marker(
+    data, data_label, marker, marker_label, title, x_label, filename
+):
     """
     Generates a histogram visualization with 200 bins and includes several reference lines:
     - The main marker line (red dashed)
     - The mean value (blue dashed)
     - ±1 standard deviation ranges (light blue dotted)
-    
+
     Args:
         data (array-like):
             The data to plot in the histogram
         data_label (str):
             Label for the data series in the legend
-        marker (float): 
+        marker (float):
             Position for the vertical marker line (red dashed line)
         marker_label (str):
             Label for the marker line in the legend
@@ -123,7 +134,7 @@ def create_1var_histogram_with_marker(data, data_label, marker, marker_label, ti
             Label for the x-axis
         filename (str):
             Path where the figure will be saved
-        
+
     Returns:
         None:
             The function saves the figure to the specified filename but doesn't return any value
@@ -139,51 +150,69 @@ def create_1var_histogram_with_marker(data, data_label, marker, marker_label, ti
     std_val = np.std(npData)
     median_val = np.median(npData)
 
-    # Create figure 
+    # Create figure
     fig, ax = plt.subplots(figsize=(12, 6), dpi=300)
-    n, bins, patches = ax.hist(npData, bins=200, range=(0, max_val), 
-                                 alpha=0.5, edgecolor='black', color="blue")
+    n, bins, patches = ax.hist(
+        npData, bins=200, range=(0, max_val), alpha=0.5, edgecolor="black", color="blue"
+    )
     if marker is not None:
         ax.axvline(x=marker, color="red", linestyle="--", linewidth=2)
-    ax.axvline(x=mean_val, color="blue", linestyle="--", linewidth=2)   
-    ax.axvline(x=mean_val+std_val, color="lightblue", linestyle=":", linewidth=2)
-    ax.axvline(x=mean_val-std_val, color="lightblue", linestyle=":", linewidth=2)    
+    ax.axvline(x=mean_val, color="blue", linestyle="--", linewidth=2)
+    ax.axvline(x=mean_val + std_val, color="lightblue", linestyle=":", linewidth=2)
+    ax.axvline(x=mean_val - std_val, color="lightblue", linestyle=":", linewidth=2)
 
     # Add labels and format axes
     ax.set_title(title, fontsize=12)
 
     ax.set_xlabel(x_label, fontsize=10)
     ax.set_xticks(np.linspace(0, max_val, 6))
-    ax.set_xticklabels([f'{x:.2e}' for x in np.linspace(0, max_val, 6)])
+    ax.set_xticklabels([f"{x:.2e}" for x in np.linspace(0, max_val, 6)])
 
     ax.set_ylabel("Frequency", fontsize=10)
-    
+
     legend_elements = [
         # Histogram
         Patch(color="blue", label=data_label),
         Line2D([0], [0], color="blue", linestyle=":", label=f"Mean: {mean_val:.2e}"),
-        Line2D([0], [0], color="lightblue", linestyle=":", label=f"±1σ: {mean_val-std_val:.2e}, {mean_val+std_val:.2e}"),
+        Line2D(
+            [0],
+            [0],
+            color="lightblue",
+            linestyle=":",
+            label=f"±1σ: {mean_val-std_val:.2e}, {mean_val+std_val:.2e}",
+        ),
         Patch(color="none", label=f"Median: {median_val:.2e}"),
     ]
     if marker_label is not None:
         legend_elements = [
             # True value Marker
-            Line2D([0], [0], color="red", linestyle='--', label=f"{marker_label}: {marker}")
+            Line2D(
+                [0], [0], color="red", linestyle="--", label=f"{marker_label}: {marker}"
+            )
         ] + legend_elements
     ax.legend(handles=legend_elements, fontsize=10)
 
     plt.tight_layout()
-    
+
     # Save to file
     plt.savefig(filename)
     plt.close(fig)
 
 
-def create_2var_histogram_with_marker(data1, data_label1, data2, data_label2, marker, marker_label, 
-                                      title, x_label, filename):
+def create_2var_histogram_with_marker(
+    data1,
+    data_label1,
+    data2,
+    data_label2,
+    marker,
+    marker_label,
+    title,
+    x_label,
+    filename,
+):
     """
     Generates a histogram comparing two datasets with a marker line and statistical references.
-   
+
     Args:
         data1 (array-like):
             First dataset to plot (shown in blue)
@@ -203,12 +232,12 @@ def create_2var_histogram_with_marker(data1, data_label1, data2, data_label2, ma
             Label for the x-axis
         filename (str):
             Path where the figure will be saved
-            
+
     Returns:
         None:
             The function saves the figure to the specified filename but doesn't return any value
     """
-    plt.style.use('default')
+    plt.style.use("default")
 
     # Process data
     npData1 = np.array(data1)
@@ -223,28 +252,40 @@ def create_2var_histogram_with_marker(data1, data_label1, data2, data_label2, ma
     std_val2 = np.std(npData2)
     median_val2 = np.median(npData2)
 
-    # Create figure 
+    # Create figure
     fig, ax = plt.subplots(figsize=(12, 6), dpi=300)
-    
+
     # Plot both histograms with transparency
-    n1, bins1, patches1 = ax.hist(npData1, bins=200, range=(0, max_val), 
-                                 alpha=0.5, edgecolor='black', color="blue")
-    n2, bins2, patches2 = ax.hist(npData2, bins=200, range=(0, max_val), 
-                                 alpha=0.5, edgecolor='black', color="green")
-    
+    n1, bins1, patches1 = ax.hist(
+        npData1,
+        bins=200,
+        range=(0, max_val),
+        alpha=0.5,
+        edgecolor="black",
+        color="blue",
+    )
+    n2, bins2, patches2 = ax.hist(
+        npData2,
+        bins=200,
+        range=(0, max_val),
+        alpha=0.5,
+        edgecolor="black",
+        color="green",
+    )
+
     # Add vertical lines for marker and statistics
     if marker is not None:
-        ax.axvline(x=marker, color='red', linestyle='--', linewidth=2)
-    
+        ax.axvline(x=marker, color="red", linestyle="--", linewidth=2)
+
     # Dataset 1 statistics (solid lines)
-    ax.axvline(x=mean_val1, color='blue', linestyle='--', linewidth=2)
-    ax.axvline(x=mean_val1+std_val1, color='lightblue', linestyle=':', linewidth=2)
-    ax.axvline(x=mean_val1-std_val1, color='lightblue', linestyle=':', linewidth=2)
-    
+    ax.axvline(x=mean_val1, color="blue", linestyle="--", linewidth=2)
+    ax.axvline(x=mean_val1 + std_val1, color="lightblue", linestyle=":", linewidth=2)
+    ax.axvline(x=mean_val1 - std_val1, color="lightblue", linestyle=":", linewidth=2)
+
     # Dataset 2 statistics (dashed lines)
-    ax.axvline(x=mean_val2, color='green', linestyle='--', linewidth=2)
-    ax.axvline(x=mean_val2+std_val2, color='lightgreen', linestyle=':', linewidth=2)
-    ax.axvline(x=mean_val2-std_val2, color='lightgreen', linestyle=':', linewidth=2)
+    ax.axvline(x=mean_val2, color="green", linestyle="--", linewidth=2)
+    ax.axvline(x=mean_val2 + std_val2, color="lightgreen", linestyle=":", linewidth=2)
+    ax.axvline(x=mean_val2 - std_val2, color="lightgreen", linestyle=":", linewidth=2)
 
     # Add labels and format axes
     ax.set_title(title, fontsize=12)
@@ -254,30 +295,44 @@ def create_2var_histogram_with_marker(data1, data_label1, data2, data_label2, ma
     ax.set_xticklabels([f"{x:.2e}" for x in np.linspace(0, max_val, 6)])
 
     ax.set_ylabel("Frequency", fontsize=10)
-    
+
     # Create legend with statistical information
     legend_elements = [
         # Histogram 1
         Patch(color="blue", alpha=0.5, label=f"{data_label1}"),
-        Line2D([0], [0], color="blue", linestyle=':', label=f"Mean: {mean_val1:.2e}"),
-        Line2D([0], [0], color="lightblue", linestyle=':', label=f"±1σ: {mean_val1-std_val1:.2e}, {mean_val1+std_val1:.2e}"),
+        Line2D([0], [0], color="blue", linestyle=":", label=f"Mean: {mean_val1:.2e}"),
+        Line2D(
+            [0],
+            [0],
+            color="lightblue",
+            linestyle=":",
+            label=f"±1σ: {mean_val1-std_val1:.2e}, {mean_val1+std_val1:.2e}",
+        ),
         Patch(color="none", label=f"Median: {median_val1:.2e}"),
         # Histogram 2
         Patch(color="green", alpha=0.5, label=f"{data_label2}"),
-        Line2D([0], [0], color="green", linestyle=':', label=f"Mean: {mean_val2:.2e}"),
-        Line2D([0], [0], color="lightgreen", linestyle=':', label=f"±1σ: {mean_val2-std_val2:.2e}, {mean_val2+std_val2:.2e}"),
-        Patch(color="none", label=f"Median: {median_val2:.2e}")
+        Line2D([0], [0], color="green", linestyle=":", label=f"Mean: {mean_val2:.2e}"),
+        Line2D(
+            [0],
+            [0],
+            color="lightgreen",
+            linestyle=":",
+            label=f"±1σ: {mean_val2-std_val2:.2e}, {mean_val2+std_val2:.2e}",
+        ),
+        Patch(color="none", label=f"Median: {median_val2:.2e}"),
     ]
     if marker_label is not None:
         # True value Marker
         legend_elements = [
-            Line2D([0], [0], color="red", linestyle='--', label=f"{marker_label}: {marker}")
+            Line2D(
+                [0], [0], color="red", linestyle="--", label=f"{marker_label}: {marker}"
+            )
         ] + legend_elements
-        
+
     ax.legend(handles=legend_elements, fontsize=10)
 
     plt.tight_layout()
-    
+
     # Save to file
     plt.savefig(filename)
     plt.close(fig)
@@ -286,7 +341,7 @@ def create_2var_histogram_with_marker(data1, data_label1, data2, data_label2, ma
 def compare_performance_all(model_performance_dict, filename):
     """
     Generates an error bar plot comparing prediction accuracy of multiple models.
-    
+
     Args:
         model_performance_dict (dict): Dictionary where each key is a model name and value is a performance data dictionary.
             Each model's data dictionary must contain these keys:
@@ -295,13 +350,13 @@ def compare_performance_all(model_performance_dict, filename):
               - "+1σ": Array of upper bound predictions
               - "-1σ": Array of lower bound predictions
         filename (str): Path where the figure will be saved
-            
+
     Returns:
         None:
             The function saves the figure to the specified filename but doesn't return any value
-   """
+    """
     plt.style.use("default")
-    
+
     fig, ax = plt.subplots(figsize=(12, 8), dpi=300)
 
     # Plot each model with error bars
@@ -312,36 +367,43 @@ def compare_performance_all(model_performance_dict, filename):
         minusOneSigma = np.array(model_data["-1σ"])
 
         model_color = COLORS[i]
-        
+
         # Calculate ratios
         mean_ratio = mean / true_val
         plus_ratio = plusOneSigma / true_val
         minus_ratio = minusOneSigma / true_val
-        
+
         # Calculate error bar sizes (asymmetric errors)
         upper_error = plus_ratio - mean_ratio
         lower_error = mean_ratio - minus_ratio
-        
+
         # Stagger x-values to avoid overlapping error bars
         staggered_x = true_val + 4 * i  # Increased spacing for error bars
-        
+
         # Plot error bars
         ax.errorbar(
             staggered_x,
             mean_ratio,
             yerr=[lower_error, upper_error],
-            fmt='o',
+            fmt="o",
             color=model_color,
             capsize=3,
             capthick=1,
             elinewidth=1.5,
             markersize=4,
             alpha=0.8,
-            label=model_name
+            label=model_name,
         )
 
     # Add a green horizontal line for the perfect prediction ratio = 1
-    ax.axhline(y=1.0, color='green', linestyle='-', alpha=0.7, linewidth=2, label='Perfect prediction')
+    ax.axhline(
+        y=1.0,
+        color="green",
+        linestyle="-",
+        alpha=0.7,
+        linewidth=2,
+        label="Perfect prediction",
+    )
 
     # Set labels and title
     ax.set_title("Model Prediction Accuracy Comparison", fontsize=14)
@@ -349,14 +411,14 @@ def compare_performance_all(model_performance_dict, filename):
     ax.set_xlabel("M_x(true) [GeV/c²]", fontsize=12)
     ax.set_xticks(np.linspace(150, 450, 7))
     ax.set_xticklabels([f"{x:.0f}" for x in np.linspace(150, 450, 7)])
-    
+
     ax.set_ylabel("M_x(pred) / M_x(true)", fontsize=12)
 
     # Add grid for better readability
     ax.grid(True, alpha=0.3)
-    
+
     # Add legend
-    ax.legend(fontsize=10, loc='best')
+    ax.legend(fontsize=10, loc="best")
 
     plt.tight_layout()
 
@@ -367,7 +429,7 @@ def compare_performance_all(model_performance_dict, filename):
 def compare_performance_single(model_performance_dict, filename):
     """
     Generates a line plot comparing prediction accuracy of multiple models for a single value.
-   
+
     Args:
         model_performance_dict (dict): Dictionary where each key is a model name and value is a performance data dictionary.
             Each model's data dictionary must contain these keys:
@@ -375,13 +437,13 @@ def compare_performance_single(model_performance_dict, filename):
                 - "+1σ": Float representing the upper bound prediction ratio
                 - "-1σ": Float representing the lower bound prediction ratio
         filename (str): Path where the figure will be saved
-            
+
     Returns:
         None: The function saves the figure to the specified filename
     """
-    
+
     plt.style.use("default")
-    
+
     fig, ax = plt.subplots(figsize=(10, 8), dpi=300)
 
     # Plot each model
@@ -393,18 +455,36 @@ def compare_performance_single(model_performance_dict, filename):
 
         model_color = COLORS[i]
 
-        ax.axhline(y=(mean / true_val), color=model_color, linestyle='-', alpha=0.9, label=model_name + " mean")
-        ax.axhline(y=(plusOneSigma / true_val), color=model_color, linestyle=':', alpha=0.65, label=model_name + " +1σ")
-        ax.axhline(y=(minusOneSigma / true_val), color=model_color, linestyle=':', alpha=0.65, label=model_name + " -1σ")
+        ax.axhline(
+            y=(mean / true_val),
+            color=model_color,
+            linestyle="-",
+            alpha=0.9,
+            label=model_name + " mean",
+        )
+        ax.axhline(
+            y=(plusOneSigma / true_val),
+            color=model_color,
+            linestyle=":",
+            alpha=0.65,
+            label=model_name + " +1σ",
+        )
+        ax.axhline(
+            y=(minusOneSigma / true_val),
+            color=model_color,
+            linestyle=":",
+            alpha=0.65,
+            label=model_name + " -1σ",
+        )
 
     # Add a green diagonal line for the perfect prediction ratio = 1
-    ax.axhline(y=1.0, color='green', linestyle='-', alpha=1.0)
+    ax.axhline(y=1.0, color="green", linestyle="-", alpha=1.0)
 
     # Set labels and title
     ax.set_title("Model Prediction Accuracy Comparison", fontsize=12)
 
     ax.set_xlabel("M_x(true)", fontsize=10)
-    
+
     ax.set_ylabel("M_x(pred) / M_x(true)", fontsize=10)
 
     # Add legend

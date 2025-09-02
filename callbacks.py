@@ -8,8 +8,11 @@ Description:
 Usage:
     from callbacks import get_standard_callbacks, get_no_stop_callbacks, get_finetuning_callbacks
 """
+
 import os
+
 import tensorflow as tf
+
 from downstream_model import FinetuningCallback
 
 
@@ -20,12 +23,12 @@ def get_standard_callbacks(
 ):
     """
     Standard callbacks with early stopping and learning rate reduction.
-    
+
     Args:
         directory (str): Directory to save model and logs
         early_stopping_patience (int): Patience for early stopping
         reduce_lr_patience (int): Patience for learning rate reduction
-        
+
     Returns:
         list: List of TensorFlow callbacks
     """
@@ -34,35 +37,35 @@ def get_standard_callbacks(
             backup_dir=os.path.join(directory, "backup"),
         ),
         tf.keras.callbacks.EarlyStopping(
-            monitor='val_loss',
+            monitor="val_loss",
             patience=early_stopping_patience,
-            restore_best_weights=True
+            restore_best_weights=True,
         ),
         tf.keras.callbacks.ReduceLROnPlateau(
-            monitor='val_loss',
+            monitor="val_loss",
             factor=0.5,
             patience=reduce_lr_patience,
         ),
         tf.keras.callbacks.ModelCheckpoint(
             filepath=os.path.join(directory, "best_model.keras"),
-            monitor='val_loss',
+            monitor="val_loss",
             save_best_only=True,
         ),
         tf.keras.callbacks.CSVLogger(
             os.path.join(directory, "training_logs.csv"),
             append=True,
-        )
+        ),
     ]
 
 
 def get_no_stop_callbacks(directory, learning_rate_decay=0.9):
     """
     Callbacks without early stopping, using learning rate scheduling.
-    
+
     Args:
         directory (str): Directory to save model and logs
         learning_rate_decay (float): Learning rate decay factor per epoch
-        
+
     Returns:
         list: List of TensorFlow callbacks
     """
@@ -75,7 +78,7 @@ def get_no_stop_callbacks(directory, learning_rate_decay=0.9):
         ),
         tf.keras.callbacks.ModelCheckpoint(
             filepath=os.path.join(directory, "best_model.keras"),
-            monitor='val_loss',
+            monitor="val_loss",
             save_best_only=True,
         ),
         tf.keras.callbacks.ModelCheckpoint(
@@ -87,7 +90,7 @@ def get_no_stop_callbacks(directory, learning_rate_decay=0.9):
         tf.keras.callbacks.CSVLogger(
             os.path.join(directory, "training_logs.csv"),
             append=True,
-        )
+        ),
     ]
 
 
@@ -100,14 +103,14 @@ def get_finetuning_callbacks(
 ):
     """
     Callbacks for finetuning with encoder freezing.
-    
+
     Args:
         directory (str): Directory to save model and logs
         freeze_epoch (int): Epoch at which to freeze encoder
         low_lr (float): Learning rate after freezing
-        normal_lr (float): Learning rate before freezing  
+        normal_lr (float): Learning rate before freezing
         lr_decay_factor (float): Learning rate decay factor
-        
+
     Returns:
         list: List of TensorFlow callbacks
     """
@@ -124,7 +127,7 @@ def get_finetuning_callbacks(
         ),
         tf.keras.callbacks.ModelCheckpoint(
             filepath=os.path.join(directory, "best_model.keras"),
-            monitor='val_loss',
+            monitor="val_loss",
             save_best_only=True,
         ),
         tf.keras.callbacks.ModelCheckpoint(
@@ -136,5 +139,5 @@ def get_finetuning_callbacks(
         tf.keras.callbacks.CSVLogger(
             os.path.join(directory, "training_logs.csv"),
             append=True,
-        )
+        ),
     ]

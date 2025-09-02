@@ -12,6 +12,7 @@ Author:
 Date:
 License:
 """
+
 import os
 import sys
 
@@ -20,13 +21,14 @@ ROOT_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.append(ROOT_DIR)
 
 import json
-import numpy as np
 import pickle
-from sklearn.preprocessing import StandardScaler
-import tensorflow as tf
-from tqdm import tqdm
 
 import config_set2
+import numpy as np
+import tensorflow as tf
+from sklearn.preprocessing import StandardScaler
+from tqdm import tqdm
+
 from downstream_model import FinetunedNN
 from graph_embeddings import GraphEmbeddings
 from simCLR_model import *
@@ -40,10 +42,12 @@ def main():
 
     model_dir = os.path.join(SCRIPT_DIR, f"model_{config_set2.RUN_ID}_finetune_set2")
     os.makedirs(model_dir, exist_ok=True)
-    
+
     # Load in data
-    X_train, y_train, X_val, y_val, X_test, y_test = load_data(config_set2.PROCESSED_DATA_DIRECTORY)
-    
+    X_train, y_train, X_val, y_val, X_test, y_test = load_data(
+        config_set2.PROCESSED_DATA_DIRECTORY
+    )
+
     # Create model
     downstream_model = FinetunedNN(
         encoder_path=encoder_path,
@@ -51,19 +55,18 @@ def main():
         output_dim=1,
         trainable_encoder=True,
     )
-    optimizer = tf.keras.optimizers.Adam(learning_rate=config_set2.GNN_BASELINE_LEARNING_RATE)
-    downstream_model.compile(
-        optimizer=optimizer,
-        loss='mse',
-        metrics=['mae', 'mape']
+    optimizer = tf.keras.optimizers.Adam(
+        learning_rate=config_set2.GNN_BASELINE_LEARNING_RATE
     )
+    downstream_model.compile(optimizer=optimizer, loss="mse", metrics=["mae", "mape"])
 
     # Build the model with a dummy pass
     _ = downstream_model(X_val)
-    
+
     # Train
     downstream_model.fit(
-        X_train, y_train,
+        X_train,
+        y_train,
         validation_data=(X_val, y_val),
         epochs=config_set2.EPOCHS,
         batch_size=config_set2.BATCHSIZE,
@@ -79,8 +82,9 @@ def main():
         }
     }
 
-    with open(os.path.join(model_dir, f"results.json"), 'w') as f:
+    with open(os.path.join(model_dir, f"results.json"), "w") as f:
         json.dump(results_dict, f, indent=4)
-    
+
+
 if __name__ == "__main__":
     main()

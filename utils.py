@@ -1,7 +1,8 @@
-import numpy as np
 import os
 import pickle
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+
+import numpy as np
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
@@ -18,20 +19,22 @@ def cylindrical_to_cartesian(pts, etas, phis):
     return px, py, pz
 
 
-def vectorized_lorentz_addition(particles, particle_masses, pt_index=0, eta_index=1, phi_index=2):
+def vectorized_lorentz_addition(
+    particles, particle_masses, pt_index=0, eta_index=1, phi_index=2
+):
     """
     Sums the lorentz vectors of all particles, for each event. Uses numpy functions for efficiency.
-    
+
     Args:
         particles (numpy.ndarray):
             Array should be of shape (n_samples, n_particles, n_features)
-        particle_masses (numpy.ndarray): 
+        particle_masses (numpy.ndarray):
             Array should be of shape (n_events, n_particles) each entry contains the corresponding mass
             of the particle at the same index in `particles`
         pt_index (int): Index along the third dimension of the input that corresponds to transverse momentum
         eta_index (int): Index along the third dimension of the input that corresponds to pseudorapidity
         phi_index (int): Index along the third dimension of the input that corresponds to azimuthal angle
-    
+
     Returns:
         numpy.ndarray:
             Array with shape (n_events,). Each value is the mass of the unknown particle X for the
@@ -45,17 +48,16 @@ def vectorized_lorentz_addition(particles, particle_masses, pt_index=0, eta_inde
 
     E = np.sqrt(px**2 + py**2 + pz**2 + particle_masses**2)
 
-    P_sum = np.stack([
-        np.sum(px, axis=1),
-        np.sum(py, axis=1),
-        np.sum(pz, axis=1),
-        np.sum(E, axis=1)
-    ], axis=1)
+    P_sum = np.stack(
+        [np.sum(px, axis=1), np.sum(py, axis=1), np.sum(pz, axis=1), np.sum(E, axis=1)],
+        axis=1,
+    )
 
-    calc_mass = np.sqrt(np.abs(
-        P_sum[:, 3]**2 - 
-        (P_sum[:, 0]**2 + P_sum[:, 1]**2 + P_sum[:, 2]**2)
-    ))
+    calc_mass = np.sqrt(
+        np.abs(
+            P_sum[:, 3] ** 2 - (P_sum[:, 0] ** 2 + P_sum[:, 1] ** 2 + P_sum[:, 2] ** 2)
+        )
+    )
 
     return calc_mass
 
@@ -65,16 +67,16 @@ def normalize_data(train, scalable_particle_features):
     Normalizes specified model inputs across the training dataset, using sklearn's Standard Scaler.
 
     Args:
-        train (numpy.ndarray): 
+        train (numpy.ndarray):
             Model inputs. Should be a numpy array with shape (n_samples, n_particles, n_features)
         scalable_particle_features (list of int):
             List of indices specifiying which features to normalize. E.x. scalable_particle_features=[0, 1]
             normalizes the first 2 features, across all particles across all samples.
-    
+
     Returns:
-        (numpy.ndarray, sklearn.preprocessing.StandardScaler): 
+        (numpy.ndarray, sklearn.preprocessing.StandardScaler):
             First Entry: The training dataset, after normalization.
-            
+
             Second Entry: StandardScalers corresponding to each normalized feature.
             E.x. scalable_particle_features=[0, 1] returns a length 2 list, index 0 contains
             the scaler used for the first feature, etc.
@@ -115,7 +117,7 @@ def scale_data(data, scalers, scalable_particle_features):
         scaled_values = scaler.transform(values_flat)
 
         scaled_data[:, :, idx] = scaled_values.reshape(values.shape)
-    
+
     return scaled_data
 
 
@@ -129,19 +131,23 @@ def load_data(data_directory):
     X_vals, y_vals = [], []
     X_tests, y_tests = [], []
 
-    files = [f for f in os.listdir(os.path.join(data_directory, "test")) if f.endswith(".npz")]
-    
+    files = [
+        f
+        for f in os.listdir(os.path.join(data_directory, "test"))
+        if f.endswith(".npz")
+    ]
+
     for name in tqdm(files, desc="Loading data"):
         train = np.load(os.path.join(data_directory, "train", name))
         val = np.load(os.path.join(data_directory, "val", name))
         test = np.load(os.path.join(data_directory, "test", name))
 
-        X_trains.append(train['X'])
-        y_trains.append(train['y'])
-        X_vals.append(val['X'])
-        y_vals.append(val['y'])
-        X_tests.append(test['X'])
-        y_tests.append(test['y'])
+        X_trains.append(train["X"])
+        y_trains.append(train["y"])
+        X_vals.append(val["X"])
+        y_vals.append(val["y"])
+        X_tests.append(test["X"])
+        y_tests.append(test["y"])
 
     X_train = np.concatenate(X_trains, axis=0)
     y_train = np.concatenate(y_trains, axis=0)
@@ -149,17 +155,17 @@ def load_data(data_directory):
     y_val = np.concatenate(y_vals, axis=0)
     X_test = np.concatenate(X_tests, axis=0)
     y_test = np.concatenate(y_tests, axis=0)
-    
+
     scalers = []
     for i in range(3):
-        with open(os.path.join(data_directory, f"x_scaler_{i}.pkl"), 'rb') as f:
+        with open(os.path.join(data_directory, f"x_scaler_{i}.pkl"), "rb") as f:
             scalers.append(pickle.load(f))
 
     X_train_scaled = scale_data(X_train, scalers, [0, 1, 2])
     X_val_scaled = scale_data(X_val, scalers, [0, 1, 2])
     X_test_scaled = scale_data(X_test, scalers, [0, 1, 2])
-    
-    with open(os.path.join(data_directory, "y_scaler.pkl"), 'rb') as f:
+
+    with open(os.path.join(data_directory, "y_scaler.pkl"), "rb") as f:
         y_scaler = pickle.load(f)
     y_train_scaled = y_scaler.transform(y_train.reshape(-1, 1))
     y_val_scaled = y_scaler.transform(y_val.reshape(-1, 1))
@@ -174,7 +180,14 @@ def load_data(data_directory):
     X_val_scaled = X_val_scaled.transpose(0, 2, 1)
     X_test_scaled = X_test_scaled.transpose(0, 2, 1)
 
-    return X_train_scaled, y_train_scaled, X_val_scaled, y_val_scaled, X_test_scaled, y_test_scaled
+    return (
+        X_train_scaled,
+        y_train_scaled,
+        X_val_scaled,
+        y_val_scaled,
+        X_test_scaled,
+        y_test_scaled,
+    )
 
 
 def load_data_original(data_directory):
@@ -187,19 +200,23 @@ def load_data_original(data_directory):
     X_vals, y_vals = [], []
     X_tests, y_tests = [], []
 
-    files = [f for f in os.listdir(os.path.join(data_directory, "test")) if f.endswith(".npz")]
-    
+    files = [
+        f
+        for f in os.listdir(os.path.join(data_directory, "test"))
+        if f.endswith(".npz")
+    ]
+
     for name in tqdm(files, desc="Loading data"):
         train = np.load(os.path.join(data_directory, "train", name))
         val = np.load(os.path.join(data_directory, "val", name))
         test = np.load(os.path.join(data_directory, "test", name))
 
-        X_trains.append(train['X'])
-        y_trains.append(train['y'])
-        X_vals.append(val['X'])
-        y_vals.append(val['y'])
-        X_tests.append(test['X'])
-        y_tests.append(test['y'])
+        X_trains.append(train["X"])
+        y_trains.append(train["y"])
+        X_vals.append(val["X"])
+        y_vals.append(val["y"])
+        X_tests.append(test["X"])
+        y_tests.append(test["y"])
 
     X_train = np.concatenate(X_trains, axis=0)
     y_train = np.concatenate(y_trains, axis=0)
@@ -218,11 +235,11 @@ def calculate_metrics(y_true, y_pred, name):
     rmse = np.sqrt(mse)
     mae = mean_absolute_error(y_true, y_pred)
     r2 = r2_score(y_true, y_pred)
-    
+
     relative_error = np.abs(y_true - y_pred) / np.abs(y_true)
     mean_relative_error = np.mean(relative_error)
     median_relative_error = np.median(relative_error)
-    
+
     return {
         f"{name}_metrics": {
             "mse": float(mse),
