@@ -8,18 +8,13 @@ Description:
     train/test/val datasets.
 
 Usage:
-    python siamese.py              # uses config.yaml
-    python siamese.py --dataset set2  # uses config_set2.yaml
+    python siamese.py --config config_set2.yaml  # uses config_set2.yaml
 Author:
 Date:
 License:
 """
 import os
 import sys
-
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(SCRIPT_DIR)
-sys.path.append(ROOT_DIR)
 
 import json
 import numpy as np
@@ -38,10 +33,9 @@ from utils import load_data
 
 def main():
     # Load configuration based on command line argument
-    dataset_type = get_dataset_type_from_args()
-    config = load_config(dataset_type)
+    config = load_config()
     
-    model_dir = os.path.join(SCRIPT_DIR, f"model_{config['RUN_ID']}")
+    model_dir = os.path.join(config["ROOT_DIR"], "siamese", f"model_{config['RUN_ID']}{config["DATASET_NAME"]}")
     os.makedirs(model_dir, exist_ok=True)
 
     # Load in data and create augmented pairs
