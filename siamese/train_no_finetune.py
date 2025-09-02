@@ -7,6 +7,8 @@ Description:
     of training, only the downstream network changes.
 
 Usage:
+    python train_no_finetune.py              # uses config.yaml
+    python train_no_finetune.py --dataset set2  # uses config_set2.yaml
 Author:
 Date:
 License:
@@ -25,7 +27,8 @@ from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 from tqdm import tqdm
 
-import config
+from callbacks import get_standard_callbacks
+from config_loader import load_config, get_dataset_type_from_args
 from downstream_model import FinetunedNN
 from graph_embeddings import GraphEmbeddings
 from simCLR_model import *
@@ -34,23 +37,27 @@ from utils import load_data
 
 
 def main():
-    encoder_dir = os.path.join(SCRIPT_DIR, f"model_{config.RUN_ID}")
+    # Load configuration based on command line argument
+    dataset_type = get_dataset_type_from_args()
+    config = load_config(dataset_type)
+    
+    encoder_dir = os.path.join(SCRIPT_DIR, f"model_{config['RUN_ID']}")
     encoder_path = os.path.join(encoder_dir, "best_model_encoder.keras")
 
-    model_dir = os.path.join(SCRIPT_DIR, f"model_{config.RUN_ID}_no_finetune")
+    model_dir = os.path.join(SCRIPT_DIR, f"model_{config['RUN_ID']}_no_finetune")
     os.makedirs(model_dir, exist_ok=True)
     
     # Load in data
-    X_train, y_train, X_val, y_val, X_test, y_test = load_data(config.PROCESSED_DATA_DIRECTORY)
+    X_train, y_train, X_val, y_val, X_test, y_test = load_data(config['PROCESSED_DATA_DIRECTORY'])
     
     # Create model
     downstream_model = FinetunedNN(
         encoder_path=encoder_path,
-        downstream_units=config.SIAMESE_DOWNSTREAM_LAYER_SIZES,
+        downstream_units=config['DOWNSTREAM_LAYER_SIZES'],
         output_dim=1,
         trainable_encoder=False,  # Freeze encoder weights
     )
-    optimizer = tf.keras.optimizers.Adam(learning_rate=config.DOWNSTREAM_NO_FINETUNE_LEARNING_RATE)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=config['DOWNSTREAM_NO_FINETUNE_LEARNING_RATE'])
     downstream_model.compile(
         optimizer=optimizer,
         loss='mse',
@@ -64,9 +71,13 @@ def main():
     downstream_model.fit(
         X_train, y_train,
         validation_data=(X_val, y_val),
-        epochs=config.EPOCHS,
-        batch_size=config.BATCHSIZE,
-        callbacks=config.STANDARD_CALLBACKS(model_dir),
+        epochs=config['EPOCHS'],
+        batch_size=config['BATCHSIZE'],
+        callbacks=get_standard_callbacks(
+            model_dir,
+            config['GNN_BASELINE_EARLY_STOPPING_PATIENCE'],
+            config['GNN_BASELINE_REDUCE_LR_PATIENCE']
+        ),
     )
 
     test_results = downstream_model.evaluate(X_test, y_test, verbose=1)

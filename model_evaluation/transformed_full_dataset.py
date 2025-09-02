@@ -13,17 +13,13 @@ License:
 import os
 import sys
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(SCRIPT_DIR)
-sys.path.append(ROOT_DIR)
+from config_loader import load_config
 
 import json
 import numpy as np
 import pickle
 from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
-
-import config
 from downstream_model import *
 from graph_embeddings import GraphEmbeddings
 from simCLR_model import *
@@ -33,19 +29,21 @@ from plotting import *
 
 
 def main():
+    config = load_config()
+    
     # Predictions given by gnn_baseline model
-    _, _, _, _, X, y = load_data(config.PROCESSED_DATA_DIRECTORY)
+    _, _, _, _, X, y = load_data(config["PROCESSED_DATA_DIRECTORY"])
 
     test_size = len(X)
-    test_batches = int(test_size // config.BATCHSIZE)
+    test_batches = int(test_size // config["BATCHSIZE"])
 
-    test_transformed = create_transformed_dataset(X, y, batchsize=config.BATCHSIZE, n_features=config.N_FEATURES)
+    test_transformed = create_transformed_dataset(X, y, batchsize=config["BATCHSIZE"], n_features=config["N_FEATURES"])
     test_transformed = test_transformed.take(test_batches)
 
-    gnn_baseline_model_path = os.path.join(config.ROOT_DIR, "gnn_baseline", f"model_{config.RUN_ID}", "best_model.keras")
+    gnn_baseline_model_path = os.path.join(config["ROOT_DIR"], "gnn_baseline", f"model_{config["RUN_ID"]}{config["DATASET_NAME"]}", "best_model.keras")
     gnn_baseline_model = tf.keras.models.load_model(gnn_baseline_model_path)
 
-    with open(os.path.join(config.PROCESSED_DATA_DIRECTORY, "y_scaler.pkl"), 'rb') as f:
+    with open(os.path.join(config["PROCESSED_DATA_DIRECTORY"], "y_scaler.pkl"), 'rb') as f:
         y_scaler = pickle.load(f)
     
     # Predictions given by gnn_baseline model
@@ -61,7 +59,7 @@ def main():
     y_true = np.concatenate(y_true_list).flatten()
 
     # Predictions given by gnn_transformed model
-    gnn_transformed_model_path = os.path.join(config.ROOT_DIR, "gnn_transformed", f"model_{config.RUN_ID}", "best_model.keras")
+    gnn_transformed_model_path = os.path.join(config["ROOT_DIR"], "gnn_transformed", f"model_{config["RUN_ID"]}{config["DATASET_NAME"]}", "best_model.keras")
     gnn_transformed_model = tf.keras.models.load_model(gnn_transformed_model_path)
     
     y_gnn_transformed_list = []
@@ -76,7 +74,7 @@ def main():
     y_true = np.concatenate(y_true_list).flatten()
 
     # Predictions given by siamese finetune model
-    siamese_finetune_model_path = os.path.join(config.ROOT_DIR, "siamese", f"model_3_finetune", "best_model.keras")
+    siamese_finetune_model_path = os.path.join(config["ROOT_DIR"], "siamese", f"model_{config["RUN_ID"]}_finetune{config["DATASET_NAME"]}", "best_model.keras")
     siamese_finetune_model = tf.keras.models.load_model(
         siamese_finetune_model_path,
         custom_objects={
@@ -98,7 +96,7 @@ def main():
     y_true = np.concatenate(y_true_list).flatten()
 
     # Predictions given by siamese no_finetune model
-    siamese_no_finetune_model_path = os.path.join(config.ROOT_DIR, "siamese", f"model_3_no_finetune", "best_model.keras")
+    siamese_no_finetune_model_path = os.path.join(config["ROOT_DIR"], "siamese", f"model_{config["RUN_ID"]}_no_finetune{config["DATASET_NAME"]}", "best_model.keras")
     siamese_no_finetune_model = tf.keras.models.load_model(
         siamese_no_finetune_model_path,
         custom_objects={
@@ -120,12 +118,12 @@ def main():
     y_true = np.concatenate(y_true_list).flatten()
 
     # Predictions given by naive lorentz addition
-    _, _, _, _, X_orig, y_orig = load_data_original(config.PROCESSED_DATA_DIRECTORY)
+    _, _, _, _, X_orig, y_orig = load_data_original(config["PROCESSED_DATA_DIRECTORY"])
     
     X_orig = X_orig.transpose(0, 2, 1)
     y_orig = y_orig.reshape(-1, 1)
 
-    test_orig_transformed = create_transformed_dataset(X_orig, y_orig, batchsize=config.BATCHSIZE, n_features=config.N_FEATURES)
+    test_orig_transformed = create_transformed_dataset(X_orig, y_orig, batchsize=config["BATCHSIZE"], n_features=config["N_FEATURES"])
     test_orig_transformed = test_orig_transformed.take(test_batches)
 
     y_lorentz_list = []
@@ -152,7 +150,10 @@ def main():
         **siamese_no_finetune_model_metrics,
         **lorentz_metrics
     }
-    with open(os.path.join(SCRIPT_DIR, "transformed_metrics.json"), 'w') as f:
+
+    metric_dir = os.path.join(config["ROOT_DIR"], "model_evaluation", f"json{config["DATASET_NAME"]}")
+    os.makedirs(metric_dir, exist_ok=True)
+    with open(os.path.join(metric_dir, "transformed_metrics.json"), 'w') as f:
         json.dump(metrics, f, indent=4)
 
 

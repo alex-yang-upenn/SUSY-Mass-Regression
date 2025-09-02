@@ -1,6 +1,7 @@
 keras_tuner
 matplotlib
 numpy
+PyYAML
 scikit-learn
 tensorflow
 tqdm

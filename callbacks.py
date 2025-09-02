@@ -1,66 +1,34 @@
-import os
-import sys
-import tensorflow as tf
+"""
+Module Name: callbacks
 
+Description:
+    TensorFlow callback functions for training models. These callbacks are parameterized
+    and can be used across different model training scripts.
+
+Usage:
+    from callbacks import get_standard_callbacks, get_no_stop_callbacks, get_finetuning_callbacks
+"""
+import os
+import tensorflow as tf
 from downstream_model import FinetuningCallback
 
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-RAW_DATA_DIRECTORY = os.path.join(ROOT_DIR, "raw_data_set2")
-PROCESSED_DATA_DIRECTORY = os.path.join(ROOT_DIR, "processed_data_set2")
 
-EVAL_DATA_FILES = [
-    "test_bA_bgX_bgqqqqY_bgqqqqqqqqlv_A2500_X1000_Y500.npz",
-    "test_bA_bgX_bgqqqqY_bgqqqqqqqqlv_A3300_X1400_Y550.npz",
-    "test_bA_bgX_bgqqqqY_bgqqqqqqqqlv_A4100_X1800_Y600.npz",
-    "test_bA_bgX_bgqqqqY_bgqqqqqqqqlv_A5300_X2400_Y800.npz",
-    "test_bA_bgX_bgqqqqY_bgqqqqqqqqlv_A6500_X3000_Y1000.npz",
-]
-
-
-DECAY_CHAIN = ["P1", "P2"]
-N_PARTICLES = 12
-N_FEATURES = 7
-MET_IDS = set([12]) 
-LEPTON_IDS = set([11])
-GLUON_IDS = set([21])
-TRAIN_TEST_SPLIT = 0.2
-SCALABLE_FEATURES = [0, 1, 2]
-
-
-GNN_BASELINE_F_R_LAYER_SIZES = (96, 64, 32)
-GNN_BASELINE_F_O_LAYER_SIZES = (128, 96, 64)
-GNN_BASELINE_PHI_C_LAYER_SIZES = (16, 8, 4)
-GNN_BASELINE_LEARNING_RATE=5e-4
-GNN_BASELINE_EARLY_STOPPING_PATIENCE=6
-GNN_BASELINE_REDUCE_LR_PATIENCE=2
-
-GNN_TRANSFORMED_LEARNING_RATE=5e-4
-GNN_TRANSFORMED_LEARNING_RATE_DECAY=0.9
-
-SIAMESE_PHI_C_LAYER_SIZES = (32,)
-SIAMESE_PROJ_HEAD_LAYER_SIZES = (48, 64)
-SIAMESE_LEARNING_RATE=1e-4
-
-DOWNSTREAM_FREEZE_EPOCH=3
-DOWNSTREAM_LEARNING_RATE=5e-6
-DOWNSTREAM_FROZEN_LEARNING_RATE=1e-4
-DOWNSTREAM_LR_DECAY=0.90
-
-DOWNSTREAM_NO_FINETUNE_LEARNING_RATE=1e-4
-
-SIAMESE_DOWNSTREAM_LAYER_SIZES = (16, 8)
-
-BATCHSIZE = 256
-EPOCHS = 15
-SIAMESE_EPOCHS = 20
-SIMCLR_LOSS_TEMP = 0.1
-RUN_ID = 1
-
-def STANDARD_CALLBACKS(
-        directory,
-        early_stopping_patience=GNN_BASELINE_EARLY_STOPPING_PATIENCE,
-        reduce_lr_patience=GNN_BASELINE_REDUCE_LR_PATIENCE,
-    ):
+def get_standard_callbacks(
+    directory,
+    early_stopping_patience=6,
+    reduce_lr_patience=2,
+):
+    """
+    Standard callbacks with early stopping and learning rate reduction.
+    
+    Args:
+        directory (str): Directory to save model and logs
+        early_stopping_patience (int): Patience for early stopping
+        reduce_lr_patience (int): Patience for learning rate reduction
+        
+    Returns:
+        list: List of TensorFlow callbacks
+    """
     return [
         tf.keras.callbacks.BackupAndRestore(
             backup_dir=os.path.join(directory, "backup"),
@@ -87,13 +55,23 @@ def STANDARD_CALLBACKS(
     ]
 
 
-def NO_STOP_CALLBACKS(directory):
+def get_no_stop_callbacks(directory, learning_rate_decay=0.9):
+    """
+    Callbacks without early stopping, using learning rate scheduling.
+    
+    Args:
+        directory (str): Directory to save model and logs
+        learning_rate_decay (float): Learning rate decay factor per epoch
+        
+    Returns:
+        list: List of TensorFlow callbacks
+    """
     return [
         tf.keras.callbacks.BackupAndRestore(
             backup_dir=os.path.join(directory, "backup"),
         ),
         tf.keras.callbacks.LearningRateScheduler(
-            lambda epoch, lr: lr * GNN_TRANSFORMED_LEARNING_RATE_DECAY,
+            lambda epoch, lr: lr * learning_rate_decay,
         ),
         tf.keras.callbacks.ModelCheckpoint(
             filepath=os.path.join(directory, "best_model.keras"),
@@ -113,16 +91,35 @@ def NO_STOP_CALLBACKS(directory):
     ]
 
 
-def FINETUNING_CALLBACKS(directory):
+def get_finetuning_callbacks(
+    directory,
+    freeze_epoch=3,
+    low_lr=5e-6,
+    normal_lr=1e-4,
+    lr_decay_factor=0.90,
+):
+    """
+    Callbacks for finetuning with encoder freezing.
+    
+    Args:
+        directory (str): Directory to save model and logs
+        freeze_epoch (int): Epoch at which to freeze encoder
+        low_lr (float): Learning rate after freezing
+        normal_lr (float): Learning rate before freezing  
+        lr_decay_factor (float): Learning rate decay factor
+        
+    Returns:
+        list: List of TensorFlow callbacks
+    """
     return [
         tf.keras.callbacks.BackupAndRestore(
             backup_dir=os.path.join(directory, "backup"),
         ),
         FinetuningCallback(
-            freeze_epoch=DOWNSTREAM_FREEZE_EPOCH,
-            low_lr=DOWNSTREAM_LEARNING_RATE,
-            normal_lr=DOWNSTREAM_FROZEN_LEARNING_RATE,
-            lr_decay_factor=DOWNSTREAM_LR_DECAY,
+            freeze_epoch=freeze_epoch,
+            low_lr=low_lr,
+            normal_lr=normal_lr,
+            lr_decay_factor=lr_decay_factor,
             verbose=1,
         ),
         tf.keras.callbacks.ModelCheckpoint(

@@ -37,7 +37,7 @@ def main():
     encoder_dir = os.path.join(SCRIPT_DIR, f"model_{config_set2.RUN_ID}_set2")
     encoder_path = os.path.join(encoder_dir, "best_model_encoder.keras")
 
-    model_dir = os.path.join(SCRIPT_DIR, f"model_{config_set2.RUN_ID}_no_finetune")
+    model_dir = os.path.join(SCRIPT_DIR, f"model_{config_set2.RUN_ID}_no_finetune_set2")
     os.makedirs(model_dir, exist_ok=True)
     
     # Load in data

@@ -7,6 +7,8 @@ Description:
     products (set MET_eta = 0)
 
 Usage:
+    python lorentz_addition.py              # uses config.yaml
+    python lorentz_addition.py --dataset set2  # uses config_set2.yaml
 Author:
 Date:
 License:
@@ -22,23 +24,27 @@ import ROOT
 import numpy as np
 import os
 
-import config
+from config_loader import load_config, get_dataset_type_from_args
 from plotting import *
 from utils import *
 
 
 def main():
+    # Load configuration based on command line argument
+    dataset_type = get_dataset_type_from_args()
+    config = load_config(dataset_type)
+    
     os.makedirs(os.path.join(SCRIPT_DIR, "graphs"), exist_ok=True)
 
     single_file_metrics = {}
 
-    for name in config.EVAL_DATA_FILES:
+    for name in config['EVAL_DATA_FILES']:
         print(f"Processing file {name}")
 
         # Load in data
-        train = np.load(os.path.join(config.PROCESSED_DATA_DIRECTORY, "train", name))
-        val = np.load(os.path.join(config.PROCESSED_DATA_DIRECTORY, "val", name))
-        test = np.load(os.path.join(config.PROCESSED_DATA_DIRECTORY, "test", name))
+        train = np.load(os.path.join(config['PROCESSED_DATA_DIRECTORY'], "train", name))
+        val = np.load(os.path.join(config['PROCESSED_DATA_DIRECTORY'], "val", name))
+        test = np.load(os.path.join(config['PROCESSED_DATA_DIRECTORY'], "test", name))
         
         X_train, y_train, y_eta_train = train["X"], train["y"], train["y_eta"]
         X_val, y_val, y_eta_val = val["X"], val["y"], val["y_eta"]
@@ -52,7 +58,7 @@ def main():
 
         # Obtain true mass from ROOT file
         root_name = name.replace(".npz", ".root")
-        root_file = ROOT.TFile.Open(os.path.join(config.RAW_DATA_DIRECTORY, root_name))
+        root_file = ROOT.TFile.Open(os.path.join(config['RAW_DATA_DIRECTORY'], root_name))
         test_tree = root_file.Get("test")
         test_tree.GetEntry(0)
         y_true = getattr(test_tree, "T1M")

@@ -15,17 +15,13 @@ import sys
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(SCRIPT_DIR)
-sys.path.append(ROOT_DIR)
+from config_loader import load_config
 
 import json
 import numpy as np
 import pickle
 from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
-
-import config
 from downstream_model import *
 from graph_embeddings import GraphEmbeddings
 from loss_functions import *
@@ -36,26 +32,28 @@ from utils import *
 
 
 def main():
+    config = load_config()
+    
     # Make directories
-    os.makedirs(os.path.join(SCRIPT_DIR, "accuracy_plots"), exist_ok=True)
-    os.makedirs(os.path.join(SCRIPT_DIR, "transformed_dual_histograms"), exist_ok=True)
+    os.makedirs(os.path.join(config["ROOT_DIR"], "model_evaluation", "accuracy_plots"), exist_ok=True)
+    os.makedirs(os.path.join(config["ROOT_DIR"], "model_evaluation", "transformed_dual_histograms"), exist_ok=True)
 
     # Load in scalers and model
     scalers = []
     for i in range(3):
-        with open(os.path.join(config.PROCESSED_DATA_DIRECTORY, f"x_scaler_{i}.pkl"), 'rb') as f:
+        with open(os.path.join(config["PROCESSED_DATA_DIRECTORY"], f"x_scaler_{i}.pkl"), 'rb') as f:
             scalers.append(pickle.load(f))
 
-    with open(os.path.join(config.PROCESSED_DATA_DIRECTORY, "y_scaler.pkl"), 'rb') as f:
+    with open(os.path.join(config["PROCESSED_DATA_DIRECTORY"], "y_scaler.pkl"), 'rb') as f:
         y_scaler = pickle.load(f)
     
-    gnn_baseline_model_path = os.path.join(ROOT_DIR, "gnn_baseline", f"model_{config.RUN_ID}", "best_model.keras")
+    gnn_baseline_model_path = os.path.join(config["ROOT_DIR"], "gnn_baseline", f"model_{config["RUN_ID"]}", "best_model.keras")
     gnn_baseline_model = tf.keras.models.load_model(gnn_baseline_model_path)
 
-    gnn_transformed_model_path = os.path.join(ROOT_DIR, "gnn_transformed", f"model_{config.RUN_ID}", "best_model.keras")
+    gnn_transformed_model_path = os.path.join(config["ROOT_DIR"], "gnn_transformed", f"model_{config["RUN_ID"]}", "best_model.keras")
     gnn_transformed_model = tf.keras.models.load_model(gnn_transformed_model_path)
     
-    siamese_finetune_model_path = os.path.join(config.ROOT_DIR, "siamese", "model_3_finetune", "best_model.keras")
+    siamese_finetune_model_path = os.path.join(config["ROOT_DIR"], "siamese", f"model_{config["RUN_ID"]}_finetune", "best_model.keras")
     siamese_finetune_model = tf.keras.models.load_model(
         siamese_finetune_model_path,
         custom_objects={
@@ -65,7 +63,7 @@ def main():
         },
     )
 
-    siamese_no_finetune_model_path = os.path.join(config.ROOT_DIR, "siamese", "model_3_no_finetune", "best_model.keras")
+    siamese_no_finetune_model_path = os.path.join(config["ROOT_DIR"], "siamese", f"model_{config["RUN_ID"]}_no_finetune", "best_model.keras")
     siamese_no_finetune_model = tf.keras.models.load_model(
         siamese_no_finetune_model_path,
         custom_objects={
@@ -118,12 +116,12 @@ def main():
     same_event_type_metrics = {}
     
     # Iterate across each file
-    progress_bar = tqdm(os.listdir(os.path.join(config.PROCESSED_DATA_DIRECTORY, "test")))
+    progress_bar = tqdm(os.listdir(os.path.join(config["PROCESSED_DATA_DIRECTORY"], "test")))
     for name in progress_bar:
         progress_bar.set_description(f"Processing file {name}")
         
         # Load in unscaled/untransposed data
-        test = np.load(os.path.join(config.PROCESSED_DATA_DIRECTORY, "test", name))
+        test = np.load(os.path.join(config["PROCESSED_DATA_DIRECTORY"], "test", name))
         X_test = test['X']
         y_test_flattened = test['y']
 
@@ -133,9 +131,9 @@ def main():
         y_test = y_test_flattened.reshape(-1, 1)
 
         # Apply augmentations
-        test_batches = int(len(X_test_scaled) // config.BATCHSIZE)
+        test_batches = int(len(X_test_scaled) // config["BATCHSIZE"])
         test_transformed = create_transformed_dataset(
-            X_test_scaled, y_test, batchsize=config.BATCHSIZE, n_features=config.N_FEATURES
+            X_test_scaled, y_test, batchsize=config["BATCHSIZE"], n_features=config["N_FEATURES"]
         )
         test_transformed = test_transformed.take(test_batches)
 
@@ -209,7 +207,7 @@ def main():
         # Predictions given by lorentz addition
         X_orig = X_test.transpose(0, 2, 1)
         orig_test_transformed = create_transformed_dataset(
-            X_orig, y_test, batchsize=config.BATCHSIZE, n_features=config.N_FEATURES
+            X_orig, y_test, batchsize=config["BATCHSIZE"], n_features=config["N_FEATURES"]
         )
         orig_test_transformed = orig_test_transformed.take(test_batches)
 
@@ -230,7 +228,7 @@ def main():
         model_performance_dict["lorentz_addition"]["sample_count"].append(len(y_lorentz))
 
         # Log metrics and visualize selected event types
-        if name in config.EVAL_DATA_FILES:
+        if name in config["EVAL_DATA_FILES"]:
             gnn_baseline_model_metrics = calculate_metrics(y_true, y_gnn_baseline, "gnn_baseline")
             gnn_transformed_model_metrics = calculate_metrics(y_true, y_gnn_transformed, "gnn_transformed")
             siamese_finetune_metrics = calculate_metrics(y_true, y_siamese_finetune, "siamese_finetune")
@@ -255,7 +253,7 @@ def main():
                 marker_label="True Mass",
                 title=f"Mass Regression for {name}",
                 x_label="Mass (GeV / c^2)",
-                filename=os.path.join(SCRIPT_DIR, f"transformed_dual_histograms/{name[5:-4]}.png")
+                filename=os.path.join(config["ROOT_DIR"], "model_evaluation", f"transformed_dual_histograms/{name[5:-4]}.png")
             )
 
             create_2var_histogram_with_marker(
@@ -267,7 +265,7 @@ def main():
                 marker_label="True Mass",
                 title=f"Mass Regression for {name}",
                 x_label="Mass (GeV / c^2)",
-                filename=os.path.join(SCRIPT_DIR, f"transformed_dual_histograms/{name[5:-4]}_gnn.png")
+                filename=os.path.join(config["ROOT_DIR"], "model_evaluation", f"transformed_dual_histograms/{name[5:-4]}_gnn.png")
             )
 
             create_2var_histogram_with_marker(
@@ -279,7 +277,7 @@ def main():
                 marker_label="True Mass",
                 title=f"Mass Regression for {name}",
                 x_label="Mass (GeV / c^2)",
-                filename=os.path.join(SCRIPT_DIR, f"transformed_dual_histograms/{name[5:-4]}_finetuning.png")
+                filename=os.path.join(config["ROOT_DIR"], "model_evaluation", f"transformed_dual_histograms/{name[5:-4]}_finetuning.png")
             )
     
     # Aggregate data by M_x values to avoid multiple points per M_x
@@ -287,7 +285,7 @@ def main():
     
     compare_performance_all(
         model_performance_dict=aggregated_model_performance_dict,
-        filename=os.path.join(SCRIPT_DIR, "accuracy_plots/transformed_inputs.png")
+        filename=os.path.join(config["ROOT_DIR"], "model_evaluation", "accuracy_plots/transformed_inputs.png")
     )
 
     # Create subset with only siamese_finetune, siamese_no_finetune, and gnn_baseline metrics
@@ -299,10 +297,10 @@ def main():
     
     compare_performance_all(
         model_performance_dict=subset_model_performance_dict,
-        filename=os.path.join(SCRIPT_DIR, "accuracy_plots/transformed_inputs_best.png")
+        filename=os.path.join(config["ROOT_DIR"], "model_evaluation", "accuracy_plots/transformed_inputs_best.png")
     )
 
-    with open(os.path.join(SCRIPT_DIR, "transformed_same_event_type_metrics.json"), 'w') as f:
+    with open(os.path.join(config["ROOT_DIR"], "model_evaluation", "json/transformed_same_event_type_metrics.json"), 'w') as f:
         json.dump(same_event_type_metrics, f, indent=4)
 
 

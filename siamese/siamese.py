@@ -8,6 +8,8 @@ Description:
     train/test/val datasets.
 
 Usage:
+    python siamese.py              # uses config.yaml
+    python siamese.py --dataset set2  # uses config_set2.yaml
 Author:
 Date:
 License:
@@ -26,7 +28,8 @@ from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 from tqdm import tqdm
 
-import config
+from callbacks import get_standard_callbacks
+from config_loader import load_config, get_dataset_type_from_args
 from graph_embeddings import GraphEmbeddings
 from simCLR_model import *
 from transformation import *
@@ -34,30 +37,34 @@ from utils import load_data
 
 
 def main():
-    model_dir = os.path.join(SCRIPT_DIR, f"model_{config.RUN_ID}")
+    # Load configuration based on command line argument
+    dataset_type = get_dataset_type_from_args()
+    config = load_config(dataset_type)
+    
+    model_dir = os.path.join(SCRIPT_DIR, f"model_{config['RUN_ID']}")
     os.makedirs(model_dir, exist_ok=True)
 
     # Load in data and create augmented pairs
-    X_train, y_train, X_val, y_val, X_test, y_test = load_data(config.PROCESSED_DATA_DIRECTORY)
+    X_train, y_train, X_val, y_val, X_test, y_test = load_data(config['PROCESSED_DATA_DIRECTORY'])
 
-    train_pairs = create_transformed_pairs_dataset(X_train, y_train, config.BATCHSIZE, config.N_FEATURES)
-    train_batches = int(len(X_train) // config.BATCHSIZE)
+    train_pairs = create_transformed_pairs_dataset(X_train, y_train, config['BATCHSIZE'], config['N_FEATURES'])
+    train_batches = int(len(X_train) // config['BATCHSIZE'])
 
-    val_pairs = create_transformed_pairs_dataset(X_val, y_val, config.BATCHSIZE, config.N_FEATURES)
-    val_batches = int(len(X_val) / config.BATCHSIZE)
+    val_pairs = create_transformed_pairs_dataset(X_val, y_val, config['BATCHSIZE'], config['N_FEATURES'])
+    val_batches = int(len(X_val) / config['BATCHSIZE'])
 
-    test_pairs = create_transformed_pairs_dataset(X_test, y_test, config.BATCHSIZE, config.N_FEATURES)
-    test_batches = int(len(X_test) // config.BATCHSIZE)
+    test_pairs = create_transformed_pairs_dataset(X_test, y_test, config['BATCHSIZE'], config['N_FEATURES'])
+    test_batches = int(len(X_test) // config['BATCHSIZE'])
 
     # Create the model
     simclr_model = create_simclr_model(
-        n_features=config.N_FEATURES,
-        f_r_units=config.GNN_BASELINE_F_R_LAYER_SIZES,
-        f_o_units=config.GNN_BASELINE_F_O_LAYER_SIZES,
-        phi_C_units=config.SIAMESE_PHI_C_LAYER_SIZES,
-        proj_units=config.SIAMESE_PROJ_HEAD_LAYER_SIZES,
-        temp=config.SIMCLR_LOSS_TEMP,
-        learning_rate=config.SIAMESE_LEARNING_RATE,
+        n_features=config['N_FEATURES'],
+        f_r_units=config['GNN_BASELINE_F_R_LAYER_SIZES'],
+        f_o_units=config['GNN_BASELINE_F_O_LAYER_SIZES'],
+        phi_C_units=config['SIAMESE_PHI_C_LAYER_SIZES'],
+        proj_units=config['SIAMESE_PROJ_HEAD_LAYER_SIZES'],
+        temp=config['SIMCLR_LOSS_TEMP'],
+        learning_rate=config['SIAMESE_LEARNING_RATE'],
     )
 
     # Call the model once to build it
@@ -69,12 +76,13 @@ def main():
     simclr_model.fit(
         train_pairs,
         validation_data=val_pairs,
-        epochs=config.SIAMESE_EPOCHS,
+        epochs=config['SIAMESE_EPOCHS'],
         steps_per_epoch=train_batches,
         validation_steps=val_batches,
-        callbacks=config.STANDARD_CALLBACKS(
-            model_dir, 
-            # early_stopping_patience=config.SIAMESE_EARLY_STOPPING_PATIENCE,
+        callbacks=get_standard_callbacks(
+            model_dir,
+            config['SIAMESE_EARLY_STOPPING_PATIENCE'],
+            config['SIAMESE_REDUCE_LR_PATIENCE']
         ),
     )
 
@@ -98,7 +106,7 @@ def main():
     encoder_model.save(os.path.join(model_dir, f"best_model_encoder.keras"))
     
     # Train embeddings
-    train_transformed = create_transformed_dataset(X_train, y_train, config.BATCHSIZE, config.N_FEATURES)
+    train_transformed = create_transformed_dataset(X_train, y_train, config['BATCHSIZE'], config['N_FEATURES'])
     train_iterator = iter(train_transformed)
     all_train_embeddings, all_train_targets = [], []
     for batch_idx in tqdm(range(train_batches), desc="Computing Train Embeddings"):
@@ -119,7 +127,7 @@ def main():
     del train_transformed, train_iterator, all_train_embeddings, all_train_targets, train_embeddings, train_targets
 
     # Val Embeddings
-    val_transformed = create_transformed_dataset(X_val, y_val, config.BATCHSIZE, config.N_FEATURES)
+    val_transformed = create_transformed_dataset(X_val, y_val, config['BATCHSIZE'], config['N_FEATURES'])
     val_iterator = iter(val_transformed)
     all_val_embeddings, all_val_targets = [], []
     for batch_idx in tqdm(range(val_batches), desc="Computing Val Embeddings"):
@@ -140,7 +148,7 @@ def main():
     del val_transformed, val_iterator, all_val_embeddings, all_val_targets, val_embeddings, val_targets
 
     # Test Embeddings
-    test_transformed = create_transformed_dataset(X_test, y_test, config.BATCHSIZE, config.N_FEATURES)
+    test_transformed = create_transformed_dataset(X_test, y_test, config['BATCHSIZE'], config['N_FEATURES'])
     test_iterator = iter(test_transformed)
     all_test_embeddings, all_test_targets = [], []
     for batch_idx in tqdm(range(test_batches), desc="Computing Test Embeddings"):
