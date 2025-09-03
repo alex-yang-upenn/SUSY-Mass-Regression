@@ -36,13 +36,12 @@ from utils import load_data
 
 def main():
     # Load configuration based on command line argument
-    dataset_type = get_dataset_type_from_args()
-    config = load_config(dataset_type)
+    config = load_config()
 
-    encoder_dir = os.path.join(SCRIPT_DIR, f"model_{config['RUN_ID']}{config["DATASET_NAME"]}")
+    encoder_dir = os.path.join(config["ROOT_DIR"], f"model_{config['RUN_ID']}{config["DATASET_NAME"]}")
     encoder_path = os.path.join(encoder_dir, "best_model_encoder.keras")
 
-    model_dir = os.path.join(SCRIPT_DIR, f"model_{config['RUN_ID']}_finetune{config["DATASET_NAME"]}")
+    model_dir = os.path.join(config["ROOT_DIR"], f"model_{config['RUN_ID']}_finetune{config["DATASET_NAME"]}")
     os.makedirs(model_dir, exist_ok=True)
 
     # Load in data
