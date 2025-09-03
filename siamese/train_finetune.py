@@ -8,8 +8,7 @@ Description:
     frozen for the rest of training.
 
 Usage:
-    python train_finetune.py              # uses config.yaml
-    python train_finetune.py --dataset set2  # uses config_set2.yaml
+    python train_finetune.py --config config_set2.yaml  # uses config_set2.yaml
 Author:
 Date:
 License:
@@ -17,10 +16,6 @@ License:
 
 import os
 import sys
-
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(SCRIPT_DIR)
-sys.path.append(ROOT_DIR)
 
 import json
 import pickle
@@ -31,7 +26,7 @@ from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
 from callbacks import get_finetuning_callbacks
-from config_loader import get_dataset_type_from_args, load_config
+from config_loader import load_config
 from downstream_model import FinetunedNN
 from graph_embeddings import GraphEmbeddings
 from simCLR_model import *
