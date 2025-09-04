@@ -24,7 +24,7 @@ import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
-from callbacks import get_standard_callbacks
+from callbacks import get_standard_callbacks, get_no_stop_callbacks
 from config_loader import load_config
 from graph_embeddings import GraphEmbeddings
 from simCLR_model import *
@@ -39,7 +39,7 @@ def main():
     model_dir = os.path.join(
         config["ROOT_DIR"],
         "siamese",
-        f"model_{config['RUN_ID']}{config["DATASET_NAME"]}",
+        f"model_{config['RUN_ID']}_mod_{config["DATASET_NAME"]}",  # TODO: REVERT
     )
     os.makedirs(model_dir, exist_ok=True)
 
@@ -86,10 +86,10 @@ def main():
         epochs=config["SIAMESE_EPOCHS"],
         steps_per_epoch=train_batches,
         validation_steps=val_batches,
-        callbacks=get_standard_callbacks(
+        callbacks=get_no_stop_callbacks(
             model_dir,
-            config["GNN_BASELINE_EARLY_STOPPING_PATIENCE"],
-            config["GNN_BASELINE_REDUCE_LR_PATIENCE"],
+            # config["GNN_BASELINE_EARLY_STOPPING_PATIENCE"],
+            # config["GNN_BASELINE_REDUCE_LR_PATIENCE"],
         ),
     )
 

@@ -58,7 +58,7 @@ def get_standard_callbacks(
     ]
 
 
-def get_no_stop_callbacks(directory, learning_rate_decay=0.9):
+def get_no_stop_callbacks(directory, learning_rate_decay=0.95):
     """
     Callbacks without early stopping, using learning rate scheduling.
 
