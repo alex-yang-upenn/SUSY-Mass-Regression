@@ -40,7 +40,7 @@ def main():
     encoder_dir = os.path.join(
         config["ROOT_DIR"],
         "siamese",
-        f"model_{config['RUN_ID']}{config["DATASET_NAME"]}",
+        f"model_{config['RUN_ID']}_mod_{config["DATASET_NAME"]}",
     )
     encoder_path = os.path.join(encoder_dir, "best_model_encoder.keras")
 

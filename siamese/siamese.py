@@ -39,7 +39,7 @@ def main():
     model_dir = os.path.join(
         config["ROOT_DIR"],
         "siamese",
-        f"model_{config['RUN_ID']}_mod_{config["DATASET_NAME"]}",  # TODO: REVERT
+        f"model_{config['RUN_ID']}{config["DATASET_NAME"]}",
     )
     os.makedirs(model_dir, exist_ok=True)
 
