@@ -16,12 +16,12 @@
         "median_relative_error": 0.16197609901428223
     },
     "siamese_finetune_metrics": {
-        "mse": 120880.5078125,
-        "rmse": 347.6787422499397,
-        "mae": 274.521484375,
-        "r2": 0.8591270446777344,
-        "mean_relative_error": 0.06395318359136581,
-        "median_relative_error": 0.054288025945425034
+        "mse": 124831.0234375,
+        "rmse": 353.3143408319283,
+        "mae": 277.6291809082031,
+        "r2": 0.8545231819152832,
+        "mean_relative_error": 0.0647033154964447,
+        "median_relative_error": 0.054166704416275024
     },
     "siamese_no_finetune_metrics": {
         "mse": 535138.375,

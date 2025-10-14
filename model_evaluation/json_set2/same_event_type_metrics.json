@@ -16,12 +16,12 @@
         "median_relative_error": 0.5036416053771973
     },
     "siamese_finetune_metrics": {
-        "mse": 83248.53125,
-        "rmse": 288.52821569129077,
-        "mae": 228.3269500732422,
+        "mse": 86209.7109375,
+        "rmse": 293.6149024445115,
+        "mae": 229.9547576904297,
         "r2": 0.0,
-        "mean_relative_error": 0.06918998807668686,
-        "median_relative_error": 0.05734071880578995
+        "mean_relative_error": 0.0696832612156868,
+        "median_relative_error": 0.05628051608800888
     },
     "siamese_no_finetune_metrics": {
         "mse": 646415.4375,

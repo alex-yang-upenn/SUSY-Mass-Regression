@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
+from matplotlib.ticker import MaxNLocator
 
 COLORS = ["blue", "red", "indigo", "darkorange", "gold"]
 
@@ -110,6 +111,62 @@ def aggregate_model_performance_by_mx(model_performance_dict):
     return aggregated_dict
 
 
+def aggregate_predictions_by_bucket(y_true, y_pred, bucket_width=10, min_samples=5):
+    """
+    Aggregates predictions into buckets for variance visualization.
+
+    Args:
+        y_true (np.array): True values
+        y_pred (np.array): Predicted values
+        bucket_width (float): Width of prediction buckets in GeV/c²
+        min_samples (int): Minimum number of samples required in a bucket to include it
+
+    Returns:
+        dict: Dictionary containing:
+            - "M_x(pred)": Array of bucket midpoints (x-axis values)
+            - "mean": Array of mean true/pred ratios for each bucket
+            - "+1σ": Array of mean + 1 standard deviation
+            - "-1σ": Array of mean - 1 standard deviation
+    """
+    # Calculate the ratio
+    ratio = y_true / y_pred
+
+    # Determine bucket boundaries
+    min_pred = np.floor(y_pred.min() / bucket_width) * bucket_width
+    max_pred = np.ceil(y_pred.max() / bucket_width) * bucket_width
+    bucket_edges = np.arange(min_pred, max_pred + bucket_width, bucket_width)
+
+    # Assign each prediction to a bucket
+    bucket_indices = np.digitize(y_pred, bucket_edges) - 1
+
+    bucket_midpoints = []
+    mean_ratios = []
+    plus_one_sigma = []
+    minus_one_sigma = []
+
+    # Process each bucket
+    for i in range(len(bucket_edges) - 1):
+        mask = bucket_indices == i
+        bucket_ratios = ratio[mask]
+
+        if len(bucket_ratios) >= min_samples:
+            midpoint = (bucket_edges[i] + bucket_edges[i + 1]) / 2
+            mean_ratio = np.mean(bucket_ratios)
+            std_ratio = np.std(bucket_ratios)
+
+            bucket_midpoints.append(midpoint)
+            mean_ratios.append(mean_ratio)
+            plus_one_sigma.append(mean_ratio + std_ratio)
+            minus_one_sigma.append(mean_ratio - std_ratio)
+
+    return {
+        "M_x(pred)": np.array(bucket_midpoints),
+        "mean": np.array(mean_ratios),
+        "+1σ": np.array(plus_one_sigma),
+        "-1σ": np.array(minus_one_sigma),
+    }
+
+
 def create_1var_histogram_with_marker(
     data, data_label, marker, marker_label, title, x_label, filename
 ):
@@ -165,8 +222,7 @@ def create_1var_histogram_with_marker(
     ax.set_title(title, fontsize=12)
 
     ax.set_xlabel(x_label, fontsize=10)
-    ax.set_xticks(np.linspace(0, max_val, 6))
-    ax.set_xticklabels([f"{x:.2e}" for x in np.linspace(0, max_val, 6)])
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=8))
 
     ax.set_ylabel("Frequency", fontsize=10)
 
@@ -291,8 +347,7 @@ def create_2var_histogram_with_marker(
     ax.set_title(title, fontsize=12)
 
     ax.set_xlabel(x_label, fontsize=10)
-    ax.set_xticks(np.linspace(0, max_val, 6))
-    ax.set_xticklabels([f"{x:.2e}" for x in np.linspace(0, max_val, 6)])
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=8))
 
     ax.set_ylabel("Frequency", fontsize=10)
 
@@ -338,7 +393,7 @@ def create_2var_histogram_with_marker(
     plt.close(fig)
 
 
-def compare_performance_all(model_performance_dict, filename):
+def compare_performance_all(model_performance_dict, filename, err_bar_h_spacing=2):
     """
     Generates an error bar plot comparing prediction accuracy of multiple models.
 
@@ -378,7 +433,9 @@ def compare_performance_all(model_performance_dict, filename):
         lower_error = mean_ratio - minus_ratio
 
         # Stagger x-values to avoid overlapping error bars
-        staggered_x = true_val + 4 * i  # Increased spacing for error bars
+        staggered_x = (
+            true_val + err_bar_h_spacing * i
+        )  # Increased spacing for error bars
 
         # Plot error bars
         ax.errorbar(
@@ -409,10 +466,94 @@ def compare_performance_all(model_performance_dict, filename):
     ax.set_title("Model Prediction Accuracy Comparison", fontsize=14)
 
     ax.set_xlabel("M_x(true) [GeV/c²]", fontsize=12)
-    ax.set_xticks(np.linspace(150, 450, 7))
-    ax.set_xticklabels([f"{x:.0f}" for x in np.linspace(150, 450, 7)])
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=8))
 
     ax.set_ylabel("M_x(pred) / M_x(true)", fontsize=12)
+
+    # Add grid for better readability
+    ax.grid(True, alpha=0.3)
+
+    # Add legend
+    ax.legend(fontsize=10, loc="best")
+
+    plt.tight_layout()
+
+    plt.savefig(filename)
+    plt.close(fig)
+
+
+def compare_variance_all(model_performance_dict, filename, err_bar_h_spacing=2):
+    """
+    Generates an error bar plot comparing prediction variance of multiple models.
+    X-axis shows predictions, Y-axis shows true/pred ratio to highlight variance.
+
+    Args:
+        model_performance_dict (dict): Dictionary where each key is a model name and value is a performance data dictionary.
+            Each model's data dictionary must contain these keys:
+              - "M_x(pred)": Array of prediction bucket midpoints
+              - "mean": Array of mean true/pred ratios
+              - "+1σ": Array of upper bound ratios
+              - "-1σ": Array of lower bound ratios
+        filename (str): Path where the figure will be saved
+
+    Returns:
+        None:
+            The function saves the figure to the specified filename but doesn't return any value
+    """
+    plt.style.use("default")
+
+    fig, ax = plt.subplots(figsize=(12, 8), dpi=300)
+
+    # Plot each model with error bars
+    for i, (model_name, model_data) in enumerate(model_performance_dict.items()):
+        pred_val = np.array(model_data["M_x(pred)"])
+        mean_ratio = np.array(model_data["mean"])
+        plus_ratio = np.array(model_data["+1σ"])
+        minus_ratio = np.array(model_data["-1σ"])
+
+        model_color = COLORS[i]
+
+        # Calculate error bar sizes (asymmetric errors)
+        upper_error = plus_ratio - mean_ratio
+        lower_error = mean_ratio - minus_ratio
+
+        # Stagger x-values to avoid overlapping error bars
+        staggered_x = (
+            pred_val + err_bar_h_spacing * i
+        )  # Increased spacing for error bars
+
+        # Plot error bars
+        ax.errorbar(
+            staggered_x,
+            mean_ratio,
+            yerr=[lower_error, upper_error],
+            fmt="o",
+            color=model_color,
+            capsize=3,
+            capthick=1,
+            elinewidth=1.5,
+            markersize=4,
+            alpha=0.8,
+            label=model_name,
+        )
+
+    # Add a green horizontal line for the perfect prediction ratio = 1
+    ax.axhline(
+        y=1.0,
+        color="green",
+        linestyle="-",
+        alpha=0.7,
+        linewidth=2,
+        label="Perfect prediction",
+    )
+
+    # Set labels and title
+    ax.set_title("Model Prediction Variance Comparison", fontsize=14)
+
+    ax.set_xlabel("M_x(pred) [GeV/c²]", fontsize=12)
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=8))
+
+    ax.set_ylabel("M_x(true) / M_x(pred)", fontsize=12)
 
     # Add grid for better readability
     ax.grid(True, alpha=0.3)

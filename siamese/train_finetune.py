@@ -14,11 +14,10 @@ Date:
 License:
 """
 
-import os
-import sys
-
 import json
+import os
 import pickle
+import sys
 
 import numpy as np
 import tensorflow as tf
@@ -38,10 +37,18 @@ def main():
     # Load configuration based on command line argument
     config = load_config()
 
-    encoder_dir = os.path.join(config["ROOT_DIR"], "siamese", f"model_{config['RUN_ID']}{config["DATASET_NAME"]}")
+    encoder_dir = os.path.join(
+        config["ROOT_DIR"],
+        "siamese",
+        f"model_{config['RUN_ID']}{config["DATASET_NAME"]}",
+    )
     encoder_path = os.path.join(encoder_dir, "best_model_encoder.keras")
 
-    model_dir = os.path.join(config["ROOT_DIR"], "siamese", f"model_{config['RUN_ID']}_finetune{config["DATASET_NAME"]}")
+    model_dir = os.path.join(
+        config["ROOT_DIR"],
+        "siamese",
+        f"model_{config['RUN_ID']}_finetune{config["DATASET_NAME"]}",
+    )
     os.makedirs(model_dir, exist_ok=True)
 
     # Load in data
@@ -69,7 +76,7 @@ def main():
         X_train,
         y_train,
         validation_data=(X_val, y_val),
-        epochs=config["EPOCHS"],
+        epochs=config["FINETUNE_EPOCHS"],
         batch_size=config["BATCHSIZE"],
         callbacks=get_finetuning_callbacks(
             model_dir,

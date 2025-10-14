@@ -16,20 +16,100 @@ License:
 import json
 import os
 import pickle
-import sys
 
 import numpy as np
 import tensorflow as tf
-from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
 from config_loader import load_config
 from downstream_model import *
 from graph_embeddings import GraphEmbeddings
 from loss_functions import *
+from model_evaluation.helpers import (
+    MODEL_CONFIGS,
+    calculate_all_metrics,
+    create_performance_dict,
+    load_all_models,
+)
 from plotting import *
 from siamese import *
 from utils import *
+
+
+def process_model_predictions(
+    model, X_test_scaled, y_scaler, model_name, y_true, performance_dict
+):
+    y_pred_scaled = model.predict(X_test_scaled, verbose=0)
+    y_pred = y_scaler.inverse_transform(y_pred_scaled).flatten()
+    pred_mean = np.mean(y_pred)
+    pred_std = np.std(y_pred)
+
+    performance_dict[model_name]["M_x(true)"].append(y_true[0])
+    performance_dict[model_name]["mean"].append(pred_mean)
+    performance_dict[model_name]["+1σ"].append(pred_mean + pred_std)
+    performance_dict[model_name]["-1σ"].append(pred_mean - pred_std)
+    performance_dict[model_name]["sample_count"].append(len(y_pred))
+
+    return y_pred
+
+
+def process_lorentz_predictions(X_test, y_true, performance_dict):
+    particle_masses = np.zeros((X_test.shape[0], X_test.shape[1]))
+    y_lorentz = vectorized_lorentz_addition(X_test, particle_masses)
+    lorentz_mean = np.mean(y_lorentz)
+    lorentz_std = np.std(y_lorentz)
+
+    performance_dict["lorentz_addition"]["M_x(true)"].append(y_true[0])
+    performance_dict["lorentz_addition"]["mean"].append(lorentz_mean)
+    performance_dict["lorentz_addition"]["+1σ"].append(lorentz_mean + lorentz_std)
+    performance_dict["lorentz_addition"]["-1σ"].append(lorentz_mean - lorentz_std)
+    performance_dict["lorentz_addition"]["sample_count"].append(len(y_lorentz))
+
+    return y_lorentz
+
+
+def create_histograms_for_file(config, name, predictions, y_true):
+    base_path = os.path.join(
+        config["ROOT_DIR"],
+        "model_evaluation",
+        f"dual_histograms{config['DATASET_NAME']}",
+    )
+
+    create_2var_histogram_with_marker(
+        data1=predictions["gnn_baseline"],
+        data_label1="GNN Prediction",
+        data2=predictions["lorentz_addition"],
+        data_label2="Lorentz Addition Prediction",
+        marker=y_true[0],
+        marker_label="True Mass",
+        title=f"Mass Regression for {name}",
+        x_label="Mass (GeV / c^2)",
+        filename=os.path.join(base_path, f"{name[5:-4]}.png"),
+    )
+
+    create_2var_histogram_with_marker(
+        data1=predictions["gnn_transformed"],
+        data_label1="GNN Transformed Prediction",
+        data2=predictions["gnn_baseline"],
+        data_label2="GNN Baseline Prediction",
+        marker=y_true[0],
+        marker_label="True Mass",
+        title=f"Mass Regression for {name}",
+        x_label="Mass (GeV / c^2)",
+        filename=os.path.join(base_path, f"{name[5:-4]}_gnn.png"),
+    )
+
+    create_2var_histogram_with_marker(
+        data1=predictions["siamese_finetune"],
+        data_label1="Siamese Finetune Prediction",
+        data2=predictions["siamese_no_finetune"],
+        data_label2="Siamese No Finetune Prediction",
+        marker=y_true[0],
+        marker_label="True Mass",
+        title=f"Mass Regression for {name}",
+        x_label="Mass (GeV / c^2)",
+        filename=os.path.join(base_path, f"{name[5:-4]}_finetuning.png"),
+    )
 
 
 def main():
@@ -53,7 +133,7 @@ def main():
         exist_ok=True,
     )
 
-    # Load in scalers and model
+    # Load in scalers and models
     scalers = []
     for i in range(3):
         with open(
@@ -66,89 +146,11 @@ def main():
     ) as f:
         y_scaler = pickle.load(f)
 
-    gnn_baseline_model_path = os.path.join(
-        config["ROOT_DIR"],
-        "gnn_baseline",
-        f"model_{config["RUN_ID"]}{config["DATASET_NAME"]}",
-        "best_model.keras",
-    )
-    gnn_baseline_model = tf.keras.models.load_model(gnn_baseline_model_path)
-
-    gnn_transformed_model_path = os.path.join(
-        config["ROOT_DIR"],
-        "gnn_transformed",
-        f"model_{config["RUN_ID"]}{config["DATASET_NAME"]}",
-        "best_model.keras",
-    )
-    gnn_transformed_model = tf.keras.models.load_model(gnn_transformed_model_path)
-
-    siamese_finetune_model_path = os.path.join(
-        config["ROOT_DIR"],
-        "siamese",
-        f"model_{config["RUN_ID"]}_finetune{config["DATASET_NAME"]}",
-        "best_model.keras",
-    )
-    siamese_finetune_model = tf.keras.models.load_model(
-        siamese_finetune_model_path,
-        custom_objects={
-            "SimCLRNTXentLoss": SimCLRNTXentLoss,
-            "GraphEmbeddings": GraphEmbeddings,
-            "FinetunedNN": FinetunedNN,
-        },
-    )
-
-    siamese_no_finetune_model_path = os.path.join(
-        config["ROOT_DIR"],
-        "siamese",
-        f"model_{config["RUN_ID"]}_no_finetune{config["DATASET_NAME"]}",
-        "best_model.keras",
-    )
-    siamese_no_finetune_model = tf.keras.models.load_model(
-        siamese_no_finetune_model_path,
-        custom_objects={
-            "SimCLRNTXentLoss": SimCLRNTXentLoss,
-            "GraphEmbeddings": GraphEmbeddings,
-            "FinetunedNN": FinetunedNN,
-        },
-    )
+    models = load_all_models(config)
 
     # Setup model performance dictionary
     model_performance_dict = {
-        "gnn_baseline": {
-            "M_x(true)": [],
-            "mean": [],
-            "+1σ": [],
-            "-1σ": [],
-            "sample_count": [],
-        },
-        "gnn_transformed": {
-            "M_x(true)": [],
-            "mean": [],
-            "+1σ": [],
-            "-1σ": [],
-            "sample_count": [],
-        },
-        "siamese_finetune": {
-            "M_x(true)": [],
-            "mean": [],
-            "+1σ": [],
-            "-1σ": [],
-            "sample_count": [],
-        },
-        "siamese_no_finetune": {
-            "M_x(true)": [],
-            "mean": [],
-            "+1σ": [],
-            "-1σ": [],
-            "sample_count": [],
-        },
-        "lorentz_addition": {
-            "M_x(true)": [],
-            "mean": [],
-            "+1σ": [],
-            "-1σ": [],
-            "sample_count": [],
-        },
+        model_key: create_performance_dict() for model_key in MODEL_CONFIGS.keys()
     }
 
     # Setup metrics tracker
@@ -169,177 +171,28 @@ def main():
         X_test_scaled = scale_data(X_test, scalers, [0, 1, 2])
         X_test_scaled = X_test_scaled.transpose(0, 2, 1)
 
-        # Predictions given by gnn_baseline
-        y_gnn_baseline_scaled = gnn_baseline_model.predict(X_test_scaled, verbose=0)
-        y_gnn_baseline = y_scaler.inverse_transform(y_gnn_baseline_scaled).flatten()
-        gnn_baseline_mean = np.mean(y_gnn_baseline)
-        gnn_baseline_std = np.std(y_gnn_baseline)
-        model_performance_dict["gnn_baseline"]["M_x(true)"].append(y_true[0])
-        model_performance_dict["gnn_baseline"]["mean"].append(gnn_baseline_mean)
-        model_performance_dict["gnn_baseline"]["+1σ"].append(
-            gnn_baseline_mean + gnn_baseline_std
-        )
-        model_performance_dict["gnn_baseline"]["-1σ"].append(
-            gnn_baseline_mean - gnn_baseline_std
-        )
-        model_performance_dict["gnn_baseline"]["sample_count"].append(
-            len(y_gnn_baseline)
-        )
-
-        # Predictions given by gnn_transformed
-        y_gnn_transformed_scaled = gnn_transformed_model.predict(
-            X_test_scaled, verbose=0
-        )
-        y_gnn_transformed = y_scaler.inverse_transform(
-            y_gnn_transformed_scaled
-        ).flatten()
-        gnn_transformed_mean = np.mean(y_gnn_transformed)
-        gnn_transformed_std = np.std(y_gnn_transformed)
-        model_performance_dict["gnn_transformed"]["M_x(true)"].append(y_true[0])
-        model_performance_dict["gnn_transformed"]["mean"].append(gnn_transformed_mean)
-        model_performance_dict["gnn_transformed"]["+1σ"].append(
-            gnn_transformed_mean + gnn_transformed_std
-        )
-        model_performance_dict["gnn_transformed"]["-1σ"].append(
-            gnn_transformed_mean - gnn_transformed_std
-        )
-        model_performance_dict["gnn_transformed"]["sample_count"].append(
-            len(y_gnn_transformed)
-        )
-
-        # Prediction given by contrastive learning encoder + neural network (finetune)
-        y_siamese_finetune_scaled = siamese_finetune_model.predict(
-            X_test_scaled, verbose=0
-        )
-        y_siamese_finetune = y_scaler.inverse_transform(
-            y_siamese_finetune_scaled
-        ).flatten()
-        siamese_finetune_mean = np.mean(y_siamese_finetune)
-        siamese_finetune_std = np.std(y_siamese_finetune)
-        model_performance_dict["siamese_finetune"]["M_x(true)"].append(y_true[0])
-        model_performance_dict["siamese_finetune"]["mean"].append(siamese_finetune_mean)
-        model_performance_dict["siamese_finetune"]["+1σ"].append(
-            siamese_finetune_mean + siamese_finetune_std
-        )
-        model_performance_dict["siamese_finetune"]["-1σ"].append(
-            siamese_finetune_mean - siamese_finetune_std
-        )
-        model_performance_dict["siamese_finetune"]["sample_count"].append(
-            len(y_siamese_finetune)
-        )
-
-        # Prediction given by contrastive learning encoder + neural network (no finetune)
-        y_siamese_no_finetune_scaled = siamese_no_finetune_model.predict(
-            X_test_scaled, verbose=0
-        )
-        y_siamese_no_finetune = y_scaler.inverse_transform(
-            y_siamese_no_finetune_scaled
-        ).flatten()
-        siamese_no_finetune_mean = np.mean(y_siamese_no_finetune)
-        siamese_no_finetune_std = np.std(y_siamese_no_finetune)
-        model_performance_dict["siamese_no_finetune"]["M_x(true)"].append(y_true[0])
-        model_performance_dict["siamese_no_finetune"]["mean"].append(
-            siamese_no_finetune_mean
-        )
-        model_performance_dict["siamese_no_finetune"]["+1σ"].append(
-            siamese_no_finetune_mean + siamese_no_finetune_std
-        )
-        model_performance_dict["siamese_no_finetune"]["-1σ"].append(
-            siamese_no_finetune_mean - siamese_no_finetune_std
-        )
-        model_performance_dict["siamese_no_finetune"]["sample_count"].append(
-            len(y_siamese_no_finetune)
-        )
-
-        # Predictions given by lorentz addition
-        particle_masses = np.zeros((X_test.shape[0], X_test.shape[1]))
-        y_lorentz = vectorized_lorentz_addition(X_test, particle_masses)
-        lorentz_mean = np.mean(y_lorentz)
-        lorentz_std = np.std(y_lorentz)
-        model_performance_dict["lorentz_addition"]["M_x(true)"].append(y_true[0])
-        model_performance_dict["lorentz_addition"]["mean"].append(lorentz_mean)
-        model_performance_dict["lorentz_addition"]["+1σ"].append(
-            lorentz_mean + lorentz_std
-        )
-        model_performance_dict["lorentz_addition"]["-1σ"].append(
-            lorentz_mean - lorentz_std
-        )
-        model_performance_dict["lorentz_addition"]["sample_count"].append(
-            len(y_lorentz)
-        )
+        # Process all model predictions
+        predictions = {}
+        for model_name in MODEL_CONFIGS.keys():
+            if model_name == "lorentz_addition":
+                predictions[model_name] = process_lorentz_predictions(
+                    X_test, y_true, model_performance_dict
+                )
+            else:
+                predictions[model_name] = process_model_predictions(
+                    models[model_name],
+                    X_test_scaled,
+                    y_scaler,
+                    model_name,
+                    y_true,
+                    model_performance_dict,
+                )
 
         # Log metrics and visualize selected event types
         if name in config["EVAL_DATA_FILES"]:
-            gnn_baseline_metrics = calculate_metrics(
-                y_true, y_gnn_baseline, "gnn_baseline"
-            )
-            gnn_transformed_metrics = calculate_metrics(
-                y_true, y_gnn_transformed, "gnn_transformed"
-            )
-            siamese_finetune_metrics = calculate_metrics(
-                y_true, y_siamese_finetune, "siamese_finetune"
-            )
-            siamese_no_finetune_metrics = calculate_metrics(
-                y_true, y_siamese_no_finetune, "siamese_no_finetune"
-            )
-            lorentz_metrics = calculate_metrics(y_true, y_lorentz, "lorentz_addition")
-
-            metrics = {
-                **gnn_baseline_metrics,
-                **gnn_transformed_metrics,
-                **siamese_finetune_metrics,
-                **siamese_no_finetune_metrics,
-                **lorentz_metrics,
-            }
+            metrics = calculate_all_metrics(y_true, predictions)
             same_event_type_metrics[name[5:-4]] = metrics
-
-            create_2var_histogram_with_marker(
-                data1=y_gnn_baseline,
-                data_label1="GNN Prediction",
-                data2=y_lorentz,
-                data_label2="Lorentz Addition Prediction",
-                marker=y_true[0],
-                marker_label="True Mass",
-                title=f"Mass Regression for {name}",
-                x_label="Mass (GeV / c^2)",
-                filename=os.path.join(
-                    config["ROOT_DIR"],
-                    "model_evaluation",
-                    f"dual_histograms{config["DATASET_NAME"]}/{name[5:-4]}.png",
-                ),
-            )
-
-            create_2var_histogram_with_marker(
-                data1=y_gnn_transformed,
-                data_label1="GNN Transformed Prediction",
-                data2=y_gnn_baseline,
-                data_label2="GNN Baseline Prediction",
-                marker=y_true[0],
-                marker_label="True Mass",
-                title=f"Mass Regression for {name}",
-                x_label="Mass (GeV / c^2)",
-                filename=os.path.join(
-                    config["ROOT_DIR"],
-                    "model_evaluation",
-                    f"dual_histograms{config["DATASET_NAME"]}/{name[5:-4]}_gnn.png",
-                ),
-            )
-
-            create_2var_histogram_with_marker(
-                data1=y_siamese_finetune,
-                data_label1="Siamese Finetune Prediction",
-                data2=y_siamese_no_finetune,
-                data_label2="Siamese No Finetune Prediction",
-                marker=y_true[0],
-                marker_label="True Mass",
-                title=f"Mass Regression for {name}",
-                x_label="Mass (GeV / c^2)",
-                filename=os.path.join(
-                    config["ROOT_DIR"],
-                    "model_evaluation",
-                    f"dual_histograms{config["DATASET_NAME"]}/{name[5:-4]}_finetuning.png",
-                ),
-            )
+            create_histograms_for_file(config, name, predictions, y_true)
 
     # Aggregate data by M_x values to avoid multiple points per M_x
     aggregated_model_performance_dict = aggregate_model_performance_by_mx(
@@ -353,6 +206,7 @@ def main():
             "model_evaluation",
             f"accuracy_plots{config["DATASET_NAME"]}/standard_inputs.png",
         ),
+        err_bar_h_spacing=config["ERR_BAR_H_SPACING"],
     )
 
     metric_dir = os.path.join(

@@ -24,7 +24,7 @@ import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
-from callbacks import get_standard_callbacks, get_no_stop_callbacks
+from callbacks import get_no_stop_callbacks, get_standard_callbacks
 from config_loader import load_config
 from graph_embeddings import GraphEmbeddings
 from simCLR_model import *
@@ -49,17 +49,29 @@ def main():
     )
 
     train_pairs = create_transformed_pairs_dataset(
-        X_train, y_train, config["BATCHSIZE"], config["N_FEATURES"]
+        X_train,
+        y_train,
+        config["BATCHSIZE"],
+        config["N_FEATURES"],
+        transformations=[TransformationType.DELETE_PARTICLE],
     )
     train_batches = int(len(X_train) // config["BATCHSIZE"])
 
     val_pairs = create_transformed_pairs_dataset(
-        X_val, y_val, config["BATCHSIZE"], config["N_FEATURES"]
+        X_val,
+        y_val,
+        config["BATCHSIZE"],
+        config["N_FEATURES"],
+        transformations=[TransformationType.DELETE_PARTICLE],
     )
     val_batches = int(len(X_val) / config["BATCHSIZE"])
 
     test_pairs = create_transformed_pairs_dataset(
-        X_test, y_test, config["BATCHSIZE"], config["N_FEATURES"]
+        X_test,
+        y_test,
+        config["BATCHSIZE"],
+        config["N_FEATURES"],
+        transformations=[TransformationType.DELETE_PARTICLE],
     )
     test_batches = int(len(X_test) // config["BATCHSIZE"])
 
@@ -86,10 +98,10 @@ def main():
         epochs=config["SIAMESE_EPOCHS"],
         steps_per_epoch=train_batches,
         validation_steps=val_batches,
-        callbacks=get_no_stop_callbacks(
+        callbacks=get_standard_callbacks(
             model_dir,
-            # config["GNN_BASELINE_EARLY_STOPPING_PATIENCE"],
-            # config["GNN_BASELINE_REDUCE_LR_PATIENCE"],
+            config["GNN_BASELINE_EARLY_STOPPING_PATIENCE"],
+            config["GNN_BASELINE_REDUCE_LR_PATIENCE"],
         ),
     )
 
@@ -114,7 +126,11 @@ def main():
 
     # Train embeddings
     train_transformed = create_transformed_dataset(
-        X_train, y_train, config["BATCHSIZE"], config["N_FEATURES"]
+        X_train,
+        y_train,
+        config["BATCHSIZE"],
+        config["N_FEATURES"],
+        transformations=[TransformationType.DELETE_PARTICLE],
     )
     train_iterator = iter(train_transformed)
     all_train_embeddings, all_train_targets = [], []
@@ -144,7 +160,11 @@ def main():
 
     # Val Embeddings
     val_transformed = create_transformed_dataset(
-        X_val, y_val, config["BATCHSIZE"], config["N_FEATURES"]
+        X_val,
+        y_val,
+        config["BATCHSIZE"],
+        config["N_FEATURES"],
+        transformations=[TransformationType.DELETE_PARTICLE],
     )
     val_iterator = iter(val_transformed)
     all_val_embeddings, all_val_targets = [], []
@@ -174,7 +194,11 @@ def main():
 
     # Test Embeddings
     test_transformed = create_transformed_dataset(
-        X_test, y_test, config["BATCHSIZE"], config["N_FEATURES"]
+        X_test,
+        y_test,
+        config["BATCHSIZE"],
+        config["N_FEATURES"],
+        transformations=[TransformationType.DELETE_PARTICLE],
     )
     test_iterator = iter(test_transformed)
     all_test_embeddings, all_test_targets = [], []

@@ -14,17 +14,80 @@ Date:
 License:
 """
 
+from enum import Enum
+
 import numpy as np
 import tensorflow as tf
 
 
+class TransformationType(Enum):
+    """Enum for available data transformations"""
+
+    IDENTITY = "identity"
+    DELETE_PARTICLE = "delete_particle"
+
+
+def _delete_particle(x):
+    """
+    Randomly delete a particle from the last dimension using vectorized operations
+
+    Args:
+        x (tf.Tensor): Shape of (None, num_features, num_particles)
+
+    Returns:
+        tf.Tensor: Shape of (None, num_features, num_particles - 1)
+    """
+    x_np = x.numpy()
+    batch_size, num_features, num_particles = x_np.shape
+
+    indices_to_delete = np.random.randint(0, num_particles, size=batch_size)
+
+    result = np.zeros((batch_size, num_features, num_particles - 1))
+
+    for i in range(batch_size):
+        idx = indices_to_delete[i]
+
+        # Create a mask for the randomly selected particle
+        mask = np.ones(num_particles, dtype=bool)
+        mask[idx] = False
+        # Apply the mask to keep all particles except the one at idx
+        keep_indices = np.where(mask)[0]
+        result[i] = x_np[i][:, keep_indices]
+
+    return tf.convert_to_tensor(result)
+
+
+def _identity(x):
+    """
+    No transformation
+    """
+    return x
+
+
+# Map transformation enum values to their corresponding functions
+TRANSFORMATION_MAP = {
+    TransformationType.IDENTITY: _identity,
+    TransformationType.DELETE_PARTICLE: _delete_particle,
+}
+
+
 class ViewPairsGenerator:
-    def __init__(self, dataset):
+    def __init__(self, dataset, transformations=None):
+        """
+        Constructor
+
+        Args:
+            dataset (tf.data.dataset): A Tensorflow Dataset that's batched
+            transformations (list of TransformationType): List of transformations to apply.
+                If None, uses all available transformations.
+        """
         self.dataset = dataset
-        self.TRANSFORMATIONS = [
-            self.identity,
-            self.delete_particle,
-        ]
+
+        # Build transformation list based on user input
+        if transformations is None:
+            transformations = list(TransformationType)
+
+        self.TRANSFORMATIONS = [TRANSFORMATION_MAP[t] for t in transformations]
 
     def generate(self):
         """
@@ -40,48 +103,13 @@ class ViewPairsGenerator:
             # Yield transformed views and original labels
             yield ((view1, view2), y_batch)
 
-    def delete_particle(self, x):
-        """
-        Randomly delete a particle from the last dimension using vectorized operations
-
-        Parameters:
-            x: array with shape (None, num_features, num_particles)
-
-        Returns:
-            array with shape (None, num_features, num_particles - 1)
-        """
-        x_np = x.numpy()
-        batch_size, num_features, num_particles = x_np.shape
-
-        indices_to_delete = np.random.randint(0, num_particles, size=batch_size)
-
-        result = np.zeros((batch_size, num_features, num_particles - 1))
-
-        for i in range(batch_size):
-            idx = indices_to_delete[i]
-
-            # Create a mask for the randomly selected particle
-            mask = np.ones(num_particles, dtype=bool)
-            mask[idx] = False
-            # Apply the mask to keep all particles except the one at idx
-            keep_indices = np.where(mask)[0]
-            result[i] = x_np[i][:, keep_indices]
-
-        return tf.convert_to_tensor(result)
-
-    def identity(self, x):
-        """
-        No transformation
-        """
-        return x
-
 
 class ViewTransformedGenerator:
     """
     Data generator that applies random transformations to create transformed views
     """
 
-    def __init__(self, dataset):
+    def __init__(self, dataset, transformations=None):
         """
         Constructor
 
@@ -89,12 +117,16 @@ class ViewTransformedGenerator:
             dataset (tf.data.dataset):
                 A Tensorflow Dataset that's batched and has signature (None, n_features, None) for X and
                 (None, 1) for y.
+            transformations (list of TransformationType): List of transformations to apply.
+                If None, uses all available transformations.
         """
         self.dataset = dataset
-        self.TRANSFORMATIONS = [
-            self.identity,
-            self.delete_particle,
-        ]
+
+        # Build transformation list based on user input
+        if transformations is None:
+            transformations = list(TransformationType)
+
+        self.TRANSFORMATIONS = [TRANSFORMATION_MAP[t] for t in transformations]
 
     def generate(self):
         """Generate batches with randomly transformed data"""
@@ -106,47 +138,26 @@ class ViewTransformedGenerator:
             # Yield transformed view and original labels
             yield (transformed_view, y_batch)
 
-    def delete_particle(self, x):
-        """
-        Randomly delete a particle from the last dimension using vectorized operations
 
-        Args:
-            x (numpy.ndarray): Shape of (None, num_features, num_particles)
+def create_transformed_pairs_dataset(X, y, batchsize, n_features, transformations=None):
+    """
+    Create a TensorFlow dataset with transformed pairs for contrastive learning
 
-        Returns:
-            numpy.ndarray: Shape of (None, num_features, num_particles - 1)
-        """
-        x_np = x.numpy()
-        batch_size, num_features, num_particles = x_np.shape
+    Args:
+        X: Input features
+        y: Target labels
+        batchsize: Batch size for the dataset
+        n_features: Number of features
+        transformations (list of TransformationType): List of transformations to apply.
+            If None, uses all available transformations.
 
-        indices_to_delete = np.random.randint(0, num_particles, size=batch_size)
-
-        result = np.zeros((batch_size, num_features, num_particles - 1))
-
-        for i in range(batch_size):
-            idx = indices_to_delete[i]
-
-            # Create a mask for the randomly selected particle
-            mask = np.ones(num_particles, dtype=bool)
-            mask[idx] = False
-            # Apply the mask to keep all particles except the one at idx
-            keep_indices = np.where(mask)[0]
-            result[i] = x_np[i][:, keep_indices]
-
-        return tf.convert_to_tensor(result)
-
-    def identity(self, x):
-        """
-        No transformation
-        """
-        return x
-
-
-def create_transformed_pairs_dataset(X, y, batchsize, n_features):
+    Returns:
+        tf.data.Dataset: A repeating dataset of transformed pairs
+    """
     # Create TensorFlow datasets
     dataset = tf.data.Dataset.from_tensor_slices((X, y)).batch(batchsize)
 
-    view_pairs_generator = ViewPairsGenerator(dataset)
+    view_pairs_generator = ViewPairsGenerator(dataset, transformations=transformations)
 
     output_signature = (
         (
@@ -163,11 +174,27 @@ def create_transformed_pairs_dataset(X, y, batchsize, n_features):
     return transformed_dataset.repeat()
 
 
-def create_transformed_dataset(X, y, batchsize, n_features):
+def create_transformed_dataset(X, y, batchsize, n_features, transformations=None):
+    """
+    Create a TensorFlow dataset with random transformations
+
+    Args:
+        X: Input features
+        y: Target labels
+        batchsize: Batch size for the dataset
+        n_features: Number of features
+        transformations (list of TransformationType): List of transformations to apply.
+            If None, uses all available transformations.
+
+    Returns:
+        tf.data.Dataset: A repeating dataset of transformed data
+    """
     # Create TensorFlow datasets
     dataset = tf.data.Dataset.from_tensor_slices((X, y)).batch(batchsize)
 
-    view_transformed_generator = ViewTransformedGenerator(dataset)
+    view_transformed_generator = ViewTransformedGenerator(
+        dataset, transformations=transformations
+    )
 
     output_signature = (
         tf.TensorSpec(shape=(None, n_features, None), dtype=tf.float32),
