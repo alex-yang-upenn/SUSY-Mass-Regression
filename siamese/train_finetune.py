@@ -43,6 +43,7 @@ def main():
         f"model_{config['RUN_ID']}{config["DATASET_NAME"]}",
     )
     encoder_path = os.path.join(encoder_dir, "best_model_encoder.keras")
+    print(f"Using encoder: {encoder_path}")
 
     model_dir = os.path.join(
         config["ROOT_DIR"],
