@@ -40,7 +40,7 @@ def main():
     encoder_dir = os.path.join(
         config["ROOT_DIR"],
         "siamese",
-        f"model_{config['RUN_ID']}_mod_{config["DATASET_NAME"]}",
+        f"model_{config['RUN_ID']}{config["DATASET_NAME"]}",
     )
     encoder_path = os.path.join(encoder_dir, "best_model_encoder.keras")
 
@@ -80,10 +80,10 @@ def main():
         batch_size=config["BATCHSIZE"],
         callbacks=get_finetuning_callbacks(
             model_dir,
-            config["DOWNSTREAM_FREEZE_EPOCH"],
-            config["DOWNSTREAM_FROZEN_LEARNING_RATE"],
-            config["DOWNSTREAM_LEARNING_RATE"],
-            config["DOWNSTREAM_LR_DECAY"],
+            freeze_epoch=config["DOWNSTREAM_FREEZE_EPOCH"],
+            low_lr=config["DOWNSTREAM_LEARNING_RATE"],
+            normal_lr=config["DOWNSTREAM_FROZEN_LEARNING_RATE"],
+            lr_decay_factor=config["DOWNSTREAM_LR_DECAY"],
         ),
     )
 

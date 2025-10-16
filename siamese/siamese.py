@@ -98,10 +98,10 @@ def main():
         epochs=config["SIAMESE_EPOCHS"],
         steps_per_epoch=train_batches,
         validation_steps=val_batches,
-        callbacks=get_standard_callbacks(
+        callbacks=get_no_stop_callbacks(
             model_dir,
-            config["GNN_BASELINE_EARLY_STOPPING_PATIENCE"],
-            config["GNN_BASELINE_REDUCE_LR_PATIENCE"],
+            # config["GNN_BASELINE_EARLY_STOPPING_PATIENCE"],
+            # config["GNN_BASELINE_REDUCE_LR_PATIENCE"],
         ),
     )
 
