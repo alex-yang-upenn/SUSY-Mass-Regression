@@ -27,39 +27,50 @@ class TransformationType(Enum):
     DELETE_PARTICLE = "delete_particle"
 
 
-def _delete_particle(x):
+def _delete_particle(x, **kwargs):
     """
-    Randomly delete a particle from the last dimension using vectorized operations
+    Randomly delete particles from the last dimension using vectorized operations
 
     Args:
         x (tf.Tensor): Shape of (None, num_features, num_particles)
+        **kwargs: Keyword arguments. Supports:
+            - num_particles_to_delete (int): Number of particles to delete (default: 1)
 
     Returns:
-        tf.Tensor: Shape of (None, num_features, num_particles - 1)
+        tf.Tensor: Shape of (None, num_features, num_particles - num_particles_to_delete)
     """
+    num_particles_to_delete = kwargs.get("num_particles_to_delete", 1)
+
     x_np = x.numpy()
     batch_size, num_features, num_particles = x_np.shape
 
-    indices_to_delete = np.random.randint(0, num_particles, size=batch_size)
+    # Ensure we don't try to delete more particles than available
+    num_to_delete = min(num_particles_to_delete, num_particles - 1)
 
-    result = np.zeros((batch_size, num_features, num_particles - 1))
+    result = np.zeros((batch_size, num_features, num_particles - num_to_delete))
 
     for i in range(batch_size):
-        idx = indices_to_delete[i]
+        # Randomly select multiple unique indices to delete
+        indices_to_delete = np.random.choice(
+            num_particles, size=num_to_delete, replace=False
+        )
 
-        # Create a mask for the randomly selected particle
+        # Create a mask for the randomly selected particles
         mask = np.ones(num_particles, dtype=bool)
-        mask[idx] = False
-        # Apply the mask to keep all particles except the one at idx
-        keep_indices = np.where(mask)[0]
-        result[i] = x_np[i][:, keep_indices]
+        mask[indices_to_delete] = False
+        # Apply the mask to keep all particles except those in indices_to_delete
+        result[i] = x_np[i][:, mask]
 
     return tf.convert_to_tensor(result)
 
 
-def _identity(x):
+def _identity(x, **kwargs):
     """
     No transformation
+
+    Args:
+        x: Input tensor
+        **kwargs: Ignored keyword arguments (for consistency with other transformations)
     """
     return x
 
@@ -72,7 +83,7 @@ TRANSFORMATION_MAP = {
 
 
 class ViewPairsGenerator:
-    def __init__(self, dataset, transformations=None):
+    def __init__(self, dataset, transformations=None, transformation_kwargs=None):
         """
         Constructor
 
@@ -80,8 +91,12 @@ class ViewPairsGenerator:
             dataset (tf.data.dataset): A Tensorflow Dataset that's batched
             transformations (list of TransformationType): List of transformations to apply.
                 If None, uses all available transformations.
+            transformation_kwargs (dict): Optional keyword arguments to pass to all transformation functions.
+                Each transformation will extract the parameters it needs.
+                Example: {'num_particles_to_delete': 3}
         """
         self.dataset = dataset
+        self.transformation_kwargs = transformation_kwargs or {}
 
         # Build transformation list based on user input
         if transformations is None:
@@ -96,9 +111,10 @@ class ViewPairsGenerator:
         for x_batch, y_batch in self.dataset:
             # Create two views with random transformations
             transform1 = np.random.choice(self.TRANSFORMATIONS)
-            view1 = transform1(x_batch)
+            view1 = transform1(x_batch, **self.transformation_kwargs)
+
             transform2 = np.random.choice(self.TRANSFORMATIONS)
-            view2 = transform2(x_batch)
+            view2 = transform2(x_batch, **self.transformation_kwargs)
 
             # Yield transformed views and original labels
             yield ((view1, view2), y_batch)
@@ -109,7 +125,7 @@ class ViewTransformedGenerator:
     Data generator that applies random transformations to create transformed views
     """
 
-    def __init__(self, dataset, transformations=None):
+    def __init__(self, dataset, transformations=None, transformation_kwargs=None):
         """
         Constructor
 
@@ -119,8 +135,12 @@ class ViewTransformedGenerator:
                 (None, 1) for y.
             transformations (list of TransformationType): List of transformations to apply.
                 If None, uses all available transformations.
+            transformation_kwargs (dict): Optional keyword arguments to pass to all transformation functions.
+                Each transformation will extract the parameters it needs.
+                Example: {'num_particles_to_delete': 3}
         """
         self.dataset = dataset
+        self.transformation_kwargs = transformation_kwargs or {}
 
         # Build transformation list based on user input
         if transformations is None:
@@ -133,13 +153,15 @@ class ViewTransformedGenerator:
         for x_batch, y_batch in self.dataset:
             # Create a view with a random transformation
             transform = np.random.choice(self.TRANSFORMATIONS)
-            transformed_view = transform(x_batch)
+            transformed_view = transform(x_batch, **self.transformation_kwargs)
 
             # Yield transformed view and original labels
             yield (transformed_view, y_batch)
 
 
-def create_transformed_pairs_dataset(X, y, batchsize, n_features, transformations=None):
+def create_transformed_pairs_dataset(
+    X, y, batchsize, n_features, transformations=None, transformation_kwargs=None
+):
     """
     Create a TensorFlow dataset with transformed pairs for contrastive learning
 
@@ -150,6 +172,9 @@ def create_transformed_pairs_dataset(X, y, batchsize, n_features, transformation
         n_features: Number of features
         transformations (list of TransformationType): List of transformations to apply.
             If None, uses all available transformations.
+        transformation_kwargs (dict): Optional keyword arguments to pass to all transformation functions.
+            Each transformation will extract the parameters it needs.
+            Example: {'num_particles_to_delete': 3}
 
     Returns:
         tf.data.Dataset: A repeating dataset of transformed pairs
@@ -157,7 +182,11 @@ def create_transformed_pairs_dataset(X, y, batchsize, n_features, transformation
     # Create TensorFlow datasets
     dataset = tf.data.Dataset.from_tensor_slices((X, y)).batch(batchsize)
 
-    view_pairs_generator = ViewPairsGenerator(dataset, transformations=transformations)
+    view_pairs_generator = ViewPairsGenerator(
+        dataset,
+        transformations=transformations,
+        transformation_kwargs=transformation_kwargs,
+    )
 
     output_signature = (
         (
@@ -174,7 +203,9 @@ def create_transformed_pairs_dataset(X, y, batchsize, n_features, transformation
     return transformed_dataset.repeat()
 
 
-def create_transformed_dataset(X, y, batchsize, n_features, transformations=None):
+def create_transformed_dataset(
+    X, y, batchsize, n_features, transformations=None, transformation_kwargs=None
+):
     """
     Create a TensorFlow dataset with random transformations
 
@@ -185,6 +216,9 @@ def create_transformed_dataset(X, y, batchsize, n_features, transformations=None
         n_features: Number of features
         transformations (list of TransformationType): List of transformations to apply.
             If None, uses all available transformations.
+        transformation_kwargs (dict): Optional keyword arguments to pass to all transformation functions.
+            Each transformation will extract the parameters it needs.
+            Example: {'num_particles_to_delete': 3}
 
     Returns:
         tf.data.Dataset: A repeating dataset of transformed data
@@ -193,7 +227,9 @@ def create_transformed_dataset(X, y, batchsize, n_features, transformations=None
     dataset = tf.data.Dataset.from_tensor_slices((X, y)).batch(batchsize)
 
     view_transformed_generator = ViewTransformedGenerator(
-        dataset, transformations=transformations
+        dataset,
+        transformations=transformations,
+        transformation_kwargs=transformation_kwargs,
     )
 
     output_signature = (

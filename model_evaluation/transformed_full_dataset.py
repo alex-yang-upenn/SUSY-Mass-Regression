@@ -44,6 +44,9 @@ def process_transformed_full_dataset_predictions(models, X, y, y_scaler, config)
             batchsize=config["BATCHSIZE"],
             n_features=config["N_FEATURES"],
             transformations=[TransformationType.DELETE_PARTICLE],
+            transformation_kwargs={
+                "num_particles_to_delete": config["NUM_PARTICLES_TO_DELETE"]
+            },
         )
         test_transformed = test_transformed.take(test_batches)
 

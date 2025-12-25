@@ -54,6 +54,9 @@ def main():
         config["BATCHSIZE"],
         config["N_FEATURES"],
         transformations=[TransformationType.DELETE_PARTICLE],
+        transformation_kwargs={
+            "num_particles_to_delete": config["NUM_PARTICLES_TO_DELETE"]
+        },
     )
     train_batches = int(len(X_train) // config["BATCHSIZE"])
 
@@ -63,6 +66,9 @@ def main():
         config["BATCHSIZE"],
         config["N_FEATURES"],
         transformations=[TransformationType.DELETE_PARTICLE],
+        transformation_kwargs={
+            "num_particles_to_delete": config["NUM_PARTICLES_TO_DELETE"]
+        },
     )
     val_batches = int(len(X_val) / config["BATCHSIZE"])
 
@@ -72,6 +78,9 @@ def main():
         config["BATCHSIZE"],
         config["N_FEATURES"],
         transformations=[TransformationType.DELETE_PARTICLE],
+        transformation_kwargs={
+            "num_particles_to_delete": config["NUM_PARTICLES_TO_DELETE"]
+        },
     )
     test_batches = int(len(X_test) // config["BATCHSIZE"])
 
