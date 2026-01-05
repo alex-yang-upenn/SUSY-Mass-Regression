@@ -1,17 +1,13 @@
-"""
-Module Name: siamese
+"""SimCLR contrastive learning for self-supervised pretraining.
 
-Description:
-    This module trains and evaluates a Contrastive Learning siamese model to encode particle
-    data from decay chains. The embeddings will then be used to predict unknown SUSY
-    particle masses. At the end of training, the best model is used to generate embeddings for
-    train/test/val datasets.
+Trains a SimCLR contrastive learning model on augmented particle data views.
+The model learns useful representations without labels by contrasting augmented
+pairs. After pretraining, the encoder can be finetuned for downstream mass
+regression tasks.
 
 Usage:
-    python siamese.py --config config_set2.yaml  # uses config_set2.yaml
-Author:
-Date:
-License:
+    python3 -m siamese.siamese                    # Uses config.yaml
+    python3 -m siamese.siamese --config set2      # Uses config_set2.yaml
 """
 
 import json

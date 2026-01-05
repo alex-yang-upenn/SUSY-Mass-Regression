@@ -1,15 +1,12 @@
-"""
-Module Name: gnn_transformed
+"""GNN model training with data augmentation.
 
-Description:
-    This module trains and evaluates the same GNN model as the baseline. However, the training
-    dataset is randomly augmented with transformations that distort the particle data.
+Trains the same GNN architecture as the baseline model, but with random data
+augmentation during training. Uses particle deletion transformations to improve
+model robustness and generalization.
 
 Usage:
-    python gnn_transformed.py --config config_set2.yaml
-Author:
-Date:
-License:
+    python3 -m gnn_transformed.gnn_transformed                    # Uses config.yaml
+    python3 -m gnn_transformed.gnn_transformed --config set2      # Uses config_set2.yaml
 """
 
 import json

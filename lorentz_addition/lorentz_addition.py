@@ -1,17 +1,13 @@
-"""
-Module Name: lorentz_addition
+"""Physics-based baseline using Lorentz four-vector addition.
 
-Description:
-    This module handles inspecting the preprocessed numpy files, to verify that the data is correct.
-    It also attempts to compute unknwon particle mass with a naive lorentz addition of the decay chain
-    products (set MET_eta = 0)
+Computes particle masses using naive Lorentz addition of decay products. This
+physics-based baseline doesn't use machine learning, instead relying on conservation
+of four-momentum. Sets MET eta to 0 and sums all particle four-vectors to estimate
+the parent particle mass.
 
 Usage:
-    python lorentz_addition.py              # uses config.yaml
-    python lorentz_addition.py --dataset set2  # uses config_set2.yaml
-Author:
-Date:
-License:
+    python3 -m lorentz_addition.lorentz_addition                    # Uses config.yaml
+    python3 -m lorentz_addition.lorentz_addition --config set2      # Uses config_set2.yaml
 """
 
 import os

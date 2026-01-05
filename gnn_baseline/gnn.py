@@ -1,14 +1,12 @@
-"""
-Module Name: gnn
+"""GNN baseline model training for particle mass regression.
 
-Description:
-    This module trains and evaluates a supervised learning model to predict the mass of intermediate SUSY particles.
-    The architecture is a standard GNN, with dense layers afterwards that compute a single float value.
+Trains a supervised Graph Neural Network (GNN) with dense layers to predict
+intermediate SUSY particle masses from decay chain data. Uses standard training
+with early stopping and learning rate reduction.
 
 Usage:
-Author:
-Date:
-License:
+    python3 -m gnn_baseline.gnn                    # Uses config.yaml
+    python3 -m gnn_baseline.gnn --config set2      # Uses config_set2.yaml
 """
 
 import json

@@ -1,17 +1,10 @@
-"""
-Module Name: transformation
+"""Data augmentation transformations for contrastive learning.
 
-Description:
-    This module provides generators that augment the inputs in a dataset, for use in Contrastive Learning
-    and evaluation of model performance on distorted inputs. ViewPairsGenerator creates two
-    independently-augmented views of the same input. ViewTransformedGenerator outputs a single augmentation
-    of the input. The preferred way to use these generators is through the associated helper functions, which
-    create a pipeline through which the original Tensorflow Dataset is augmented.
-
-Usage:
-Author:
-Date:
-License:
+This module provides data generators and transformation functions for augmenting
+particle physics data. ViewPairsGenerator creates pairs of independently augmented
+views for contrastive learning (SimCLR). ViewTransformedGenerator creates single
+augmented views for evaluation. Available transformations include particle deletion
+and identity (no transformation).
 """
 
 from enum import Enum
@@ -28,16 +21,28 @@ class TransformationType(Enum):
 
 
 def _delete_particle(x, **kwargs):
-    """
-    Randomly delete particles from the last dimension using vectorized operations
+    """Randomly delete particles from input tensor.
+
+    Randomly removes specified number of particles from each sample in the batch.
+    Uses vectorized NumPy operations for efficiency. This augmentation simulates
+    detector inefficiencies or incomplete particle reconstruction.
 
     Args:
-        x (tf.Tensor): Shape of (None, num_features, num_particles)
-        **kwargs: Keyword arguments. Supports:
-            - num_particles_to_delete (int): Number of particles to delete (default: 1)
+        x: tf.Tensor of shape (batch_size, n_features, n_particles) containing
+            particle features.
+        **kwargs: Optional keyword arguments:
+            - num_particles_to_delete: Int, number of particles to randomly delete
+              per sample. Defaults to 1. Will be clamped to ensure at least one
+              particle remains.
 
     Returns:
-        tf.Tensor: Shape of (None, num_features, num_particles - num_particles_to_delete)
+        tf.Tensor: Augmented tensor of shape (batch_size, n_features,
+            n_particles - num_particles_to_delete) with randomly deleted particles.
+
+    Example:
+        >>> x = tf.random.normal((32, 6, 4))  # 32 samples, 6 features, 4 particles
+        >>> x_aug = _delete_particle(x, num_particles_to_delete=1)
+        >>> print(x_aug.shape)  # (32, 6, 3)
     """
     num_particles_to_delete = kwargs.get("num_particles_to_delete", 1)
 
@@ -65,12 +70,18 @@ def _delete_particle(x, **kwargs):
 
 
 def _identity(x, **kwargs):
-    """
-    No transformation
+    """Identity transformation (no augmentation).
+
+    Returns input unchanged. Used as a transformation option in random
+    augmentation pipelines to include non-augmented views.
 
     Args:
-        x: Input tensor
-        **kwargs: Ignored keyword arguments (for consistency with other transformations)
+        x: Input tensor of any shape.
+        **kwargs: Ignored keyword arguments for consistency with other
+            transformation functions.
+
+    Returns:
+        Input tensor unchanged.
     """
     return x
 
@@ -83,17 +94,25 @@ TRANSFORMATION_MAP = {
 
 
 class ViewPairsGenerator:
+    """Generator creating pairs of augmented views for contrastive learning.
+
+    Generates two independently augmented views of each input sample by applying
+    random transformations. Used for SimCLR contrastive learning where the model
+    learns to produce similar embeddings for different views of the same input.
+    """
+
     def __init__(self, dataset, transformations=None, transformation_kwargs=None):
-        """
-        Constructor
+        """Initialize ViewPairsGenerator.
 
         Args:
-            dataset (tf.data.dataset): A Tensorflow Dataset that's batched
-            transformations (list of TransformationType): List of transformations to apply.
-                If None, uses all available transformations.
-            transformation_kwargs (dict): Optional keyword arguments to pass to all transformation functions.
-                Each transformation will extract the parameters it needs.
-                Example: {'num_particles_to_delete': 3}
+            dataset: tf.data.Dataset, a batched TensorFlow dataset with signature
+                (X, y) where X has shape (batch_size, n_features, n_particles).
+            transformations: List of TransformationType enum values specifying which
+                transformations to randomly sample from. If None, uses all available
+                transformations.
+            transformation_kwargs: Dict of keyword arguments passed to all transformation
+                functions. Each transformation extracts the parameters it needs.
+                Example: {'num_particles_to_delete': 2}.
         """
         self.dataset = dataset
         self.transformation_kwargs = transformation_kwargs or {}
@@ -105,8 +124,12 @@ class ViewPairsGenerator:
         self.TRANSFORMATIONS = [TRANSFORMATION_MAP[t] for t in transformations]
 
     def generate(self):
-        """
-        Generate batches with transformed pairs. Use with TF's from_generator API.
+        """Generate batches with pairs of transformed views.
+
+        Yields:
+            tuple: ((view1, view2), y_batch) where view1 and view2 are independently
+                augmented versions of the same input batch, and y_batch is the
+                original labels.
         """
         for x_batch, y_batch in self.dataset:
             # Create two views with random transformations
@@ -121,23 +144,26 @@ class ViewPairsGenerator:
 
 
 class ViewTransformedGenerator:
-    """
-    Data generator that applies random transformations to create transformed views
+    """Generator creating single augmented views for evaluation.
+
+    Applies random transformations to create single augmented views of each input.
+    Used for evaluating model robustness to augmentations or for training models
+    that don't require paired views.
     """
 
     def __init__(self, dataset, transformations=None, transformation_kwargs=None):
-        """
-        Constructor
+        """Initialize ViewTransformedGenerator.
 
         Args:
-            dataset (tf.data.dataset):
-                A Tensorflow Dataset that's batched and has signature (None, n_features, None) for X and
-                (None, 1) for y.
-            transformations (list of TransformationType): List of transformations to apply.
-                If None, uses all available transformations.
-            transformation_kwargs (dict): Optional keyword arguments to pass to all transformation functions.
-                Each transformation will extract the parameters it needs.
-                Example: {'num_particles_to_delete': 3}
+            dataset: tf.data.Dataset, a batched TensorFlow dataset with signature
+                (X, y) where X has shape (batch_size, n_features, n_particles) and
+                y has shape (batch_size, 1).
+            transformations: List of TransformationType enum values specifying which
+                transformations to randomly sample from. If None, uses all available
+                transformations.
+            transformation_kwargs: Dict of keyword arguments passed to all transformation
+                functions. Each transformation extracts the parameters it needs.
+                Example: {'num_particles_to_delete': 2}.
         """
         self.dataset = dataset
         self.transformation_kwargs = transformation_kwargs or {}
@@ -149,7 +175,12 @@ class ViewTransformedGenerator:
         self.TRANSFORMATIONS = [TRANSFORMATION_MAP[t] for t in transformations]
 
     def generate(self):
-        """Generate batches with randomly transformed data"""
+        """Generate batches with randomly transformed views.
+
+        Yields:
+            tuple: (transformed_view, y_batch) where transformed_view is an augmented
+                version of the input batch and y_batch is the original labels.
+        """
         for x_batch, y_batch in self.dataset:
             # Create a view with a random transformation
             transform = np.random.choice(self.TRANSFORMATIONS)
@@ -162,22 +193,30 @@ class ViewTransformedGenerator:
 def create_transformed_pairs_dataset(
     X, y, batchsize, n_features, transformations=None, transformation_kwargs=None
 ):
-    """
-    Create a TensorFlow dataset with transformed pairs for contrastive learning
+    """Create TensorFlow dataset with transformed pairs for contrastive learning.
+
+    Creates a repeating tf.data.Dataset that yields pairs of independently augmented
+    views of the same input. Designed for SimCLR and other contrastive learning
+    approaches.
 
     Args:
-        X: Input features
-        y: Target labels
-        batchsize: Batch size for the dataset
-        n_features: Number of features
-        transformations (list of TransformationType): List of transformations to apply.
-            If None, uses all available transformations.
-        transformation_kwargs (dict): Optional keyword arguments to pass to all transformation functions.
-            Each transformation will extract the parameters it needs.
-            Example: {'num_particles_to_delete': 3}
+        X: Array of input features, shape (n_samples, n_features, n_particles).
+        y: Array of target labels, shape (n_samples, 1).
+        batchsize: Int, batch size for the dataset.
+        n_features: Int, number of features per particle.
+        transformations: List of TransformationType enum values. If None, uses all
+            available transformations.
+        transformation_kwargs: Dict of parameters for transformations. For example,
+            {'num_particles_to_delete': 2}.
 
     Returns:
-        tf.data.Dataset: A repeating dataset of transformed pairs
+        tf.data.Dataset: Repeating dataset yielding ((view1, view2), y) where:
+            - view1, view2: Augmented tensors of shape (batch_size, n_features, variable_particles)
+            - y: Labels of shape (batch_size, 1)
+
+    Example:
+        >>> dataset = create_transformed_pairs_dataset(X_train, y_train, 128, 6,
+        ...     transformation_kwargs={'num_particles_to_delete': 1})
     """
     # Create TensorFlow datasets
     dataset = tf.data.Dataset.from_tensor_slices((X, y)).batch(batchsize)
@@ -206,22 +245,29 @@ def create_transformed_pairs_dataset(
 def create_transformed_dataset(
     X, y, batchsize, n_features, transformations=None, transformation_kwargs=None
 ):
-    """
-    Create a TensorFlow dataset with random transformations
+    """Create TensorFlow dataset with random transformations.
+
+    Creates a repeating tf.data.Dataset that yields single augmented views of
+    each input. Used for evaluating model robustness or training with augmentation.
 
     Args:
-        X: Input features
-        y: Target labels
-        batchsize: Batch size for the dataset
-        n_features: Number of features
-        transformations (list of TransformationType): List of transformations to apply.
-            If None, uses all available transformations.
-        transformation_kwargs (dict): Optional keyword arguments to pass to all transformation functions.
-            Each transformation will extract the parameters it needs.
-            Example: {'num_particles_to_delete': 3}
+        X: Array of input features, shape (n_samples, n_features, n_particles).
+        y: Array of target labels, shape (n_samples, 1).
+        batchsize: Int, batch size for the dataset.
+        n_features: Int, number of features per particle.
+        transformations: List of TransformationType enum values. If None, uses all
+            available transformations.
+        transformation_kwargs: Dict of parameters for transformations. For example,
+            {'num_particles_to_delete': 2}.
 
     Returns:
-        tf.data.Dataset: A repeating dataset of transformed data
+        tf.data.Dataset: Repeating dataset yielding (transformed_view, y) where:
+            - transformed_view: Augmented tensor of shape (batch_size, n_features, variable_particles)
+            - y: Labels of shape (batch_size, 1)
+
+    Example:
+        >>> dataset = create_transformed_dataset(X_train, y_train, 128, 6,
+        ...     transformation_kwargs={'num_particles_to_delete': 1})
     """
     # Create TensorFlow datasets
     dataset = tf.data.Dataset.from_tensor_slices((X, y)).batch(batchsize)

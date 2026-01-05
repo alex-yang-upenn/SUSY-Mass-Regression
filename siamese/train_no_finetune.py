@@ -1,17 +1,12 @@
-"""
-Module Name: train_no_finetune
+"""Frozen encoder training for mass regression.
 
-Description:
-    This module trains a downstream neural network on top of an encoder to predict SUSY particle
-    masses, taking advantage of the Contrastive Learning embeddings. The encoder is frozen for all
-    of training, only the downstream network changes.
+Trains a downstream regression head on top of the pretrained SimCLR encoder
+with frozen encoder weights. This approach uses the pretrained features as-is
+without adaptation, testing the quality of the learned representations directly.
 
 Usage:
-    python train_no_finetune.py              # uses config.yaml
-    python train_no_finetune.py --dataset set2  # uses config_set2.yaml
-Author:
-Date:
-License:
+    python3 -m siamese.train_no_finetune                    # Uses config.yaml
+    python3 -m siamese.train_no_finetune --config set2      # Uses config_set2.yaml
 """
 
 import os

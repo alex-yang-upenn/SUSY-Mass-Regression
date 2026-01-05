@@ -1,12 +1,8 @@
-"""
-Module Name: config_loader
+"""Unified configuration loader for YAML config files.
 
-Description:
-    Unified configuration loader that loads YAML config files and returns
-    configuration dictionaries with computed paths. Expects command line arguments
-    that describe the config filename relative to the project root.
-
-Usage:
+This module provides functionality to load YAML configuration files and return
+configuration dictionaries with computed absolute paths. It supports command-line
+arguments to specify different config files.
 """
 
 import os
@@ -18,6 +14,32 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def load_config():
+    """Load configuration from YAML file specified via command line.
+
+    Parses command-line arguments for --config flag to determine which
+    configuration file to load. Defaults to 'config.yaml' if not specified.
+    Computes absolute paths for all directory configurations.
+
+    Args:
+        None. Reads from sys.argv for --config flag.
+
+    Returns:
+        dict: Configuration dictionary with the following structure:
+            - All original YAML key-value pairs
+            - ROOT_DIR: Absolute path to project root
+            - RAW_DATA_DIRECTORY: Absolute path to raw data directory
+            - PROCESSED_DATA_DIRECTORY: Absolute path to processed data directory
+            - RAW_DATA_BACKGROUND_DIRECTORY: Absolute path to raw background data (if exists)
+            - PROCESSED_DATA_BACKGROUND_DIRECTORY: Absolute path to processed background data (if exists)
+
+    Raises:
+        FileNotFoundError: If specified config file doesn't exist.
+        yaml.YAMLError: If config file is not valid YAML.
+
+    Example:
+        >>> config = load_config()  # Loads config.yaml
+        >>> config = load_config()  # With --config set2, loads config_set2.yaml
+    """
     if "--config" in sys.argv:
         idx = sys.argv.index("--config")
         if idx + 1 < len(sys.argv):

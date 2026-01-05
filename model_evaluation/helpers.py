@@ -1,13 +1,7 @@
-"""
-Module Name: model_evaluation/helpers
+"""Shared utilities for model evaluation.
 
-Description:
-    Shared helper functions for model evaluation scripts to avoid code duplication.
-    Contains common utilities for model loading, performance tracking, and metrics calculation.
-
-Author:
-Date:
-License:
+This module provides common helper functions for loading models, tracking
+performance metrics, and calculating evaluation metrics across all evaluation scripts.
 """
 
 import os

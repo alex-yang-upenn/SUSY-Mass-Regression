@@ -1,13 +1,9 @@
-"""
-Module Name: loss_functions
+"""Plotting functions for visualizing model performance.
 
-Description:
-    Plotting functions to visualize model performance
-
-Usage:
-Author:
-Date:
-License:
+This module provides functions to create performance plots, histograms, and comparison
+visualizations for particle physics mass regression models. Includes functions for
+aggregating predictions, creating dual histograms, and plotting model performance
+across different mass ranges with error bars.
 """
 
 from collections import defaultdict

@@ -1,3 +1,10 @@
+"""Utility functions for data loading, preprocessing, and metric calculation.
+
+This module provides functions for coordinate transformations, data scaling and
+normalization, dataset loading, Lorentz addition calculations, and model evaluation
+metrics for particle physics mass regression.
+"""
+
 import os
 import pickle
 
@@ -8,10 +15,21 @@ from tqdm import tqdm
 
 
 def cylindrical_to_cartesian(pts, etas, phis):
-    """
-    Returns
-    --------
-    tuple: (px, py, pz) from pts, etas, phis
+    """Convert cylindrical coordinates to Cartesian momentum components.
+
+    Args:
+        pts: Array of transverse momenta (pT) in GeV/c.
+        etas: Array of pseudorapidities (dimensionless).
+        phis: Array of azimuthal angles in radians.
+
+    Returns:
+        tuple: Three arrays (px, py, pz) representing Cartesian momentum
+            components in GeV/c.
+
+    Example:
+        >>> px, py, pz = cylindrical_to_cartesian(np.array([50, 60]),
+        ...                                        np.array([1.2, 0.5]),
+        ...                                        np.array([0.5, 1.0]))
     """
     px = pts * np.cos(phis)
     py = pts * np.sin(phis)
@@ -22,23 +40,34 @@ def cylindrical_to_cartesian(pts, etas, phis):
 def vectorized_lorentz_addition(
     particles, particle_masses, pt_index=0, eta_index=1, phi_index=2
 ):
-    """
-    Sums the lorentz vectors of all particles, for each event. Uses numpy functions for efficiency.
+    """Sum Lorentz four-vectors across all particles to compute invariant mass.
+
+    Vectorized implementation using NumPy for efficient computation of invariant
+    mass from particle kinematics. Converts cylindrical coordinates to Cartesian,
+    computes energy, sums four-vectors, and calculates invariant mass.
 
     Args:
-        particles (numpy.ndarray):
-            Array should be of shape (n_samples, n_particles, n_features)
-        particle_masses (numpy.ndarray):
-            Array should be of shape (n_events, n_particles) each entry contains the corresponding mass
-            of the particle at the same index in `particles`
-        pt_index (int): Index along the third dimension of the input that corresponds to transverse momentum
-        eta_index (int): Index along the third dimension of the input that corresponds to pseudorapidity
-        phi_index (int): Index along the third dimension of the input that corresponds to azimuthal angle
+        particles: Array of shape (n_samples, n_particles, n_features) containing
+            particle kinematic features.
+        particle_masses: Array of shape (n_samples, n_particles) containing the
+            mass of each particle in GeV/c^2. Must correspond to particles at the
+            same indices.
+        pt_index: Int, index along feature dimension for transverse momentum.
+            Defaults to 0.
+        eta_index: Int, index along feature dimension for pseudorapidity.
+            Defaults to 1.
+        phi_index: Int, index along feature dimension for azimuthal angle.
+            Defaults to 2.
 
     Returns:
-        numpy.ndarray:
-            Array with shape (n_events,). Each value is the mass of the unknown particle X for the
-            corresponding event
+        numpy.ndarray: Array of shape (n_samples,) containing the invariant mass
+            in GeV/c^2 for each event, computed from summed four-vectors.
+
+    Example:
+        >>> particles = np.random.rand(100, 4, 6)  # 100 events, 4 particles, 6 features
+        >>> masses = np.zeros((100, 4))
+        >>> inv_mass = vectorized_lorentz_addition(particles, masses)
+        >>> print(inv_mass.shape)  # (100,)
     """
     pts = particles[:, :, 0]
     etas = particles[:, :, 1]
@@ -63,23 +92,28 @@ def vectorized_lorentz_addition(
 
 
 def normalize_data(train, scalable_particle_features):
-    """
-    Normalizes specified model inputs across the training dataset, using sklearn's Standard Scaler.
+    """Normalize specified features using StandardScaler.
+
+    Fits sklearn StandardScaler on training data for specified features and
+    transforms them. Each feature is scaled independently across all particles
+    and samples to have zero mean and unit variance.
 
     Args:
-        train (numpy.ndarray):
-            Model inputs. Should be a numpy array with shape (n_samples, n_particles, n_features)
-        scalable_particle_features (list of int):
-            List of indices specifiying which features to normalize. E.x. scalable_particle_features=[0, 1]
-            normalizes the first 2 features, across all particles across all samples.
+        train: Array of shape (n_samples, n_particles, n_features) containing
+            training data.
+        scalable_particle_features: List of int, indices of features to normalize.
+            For example, [0, 1, 2] normalizes the first 3 features (pt, eta, phi).
 
     Returns:
-        (numpy.ndarray, sklearn.preprocessing.StandardScaler):
-            First Entry: The training dataset, after normalization.
+        tuple: Two-element tuple containing:
+            - numpy.ndarray: Normalized training dataset with same shape as input.
+            - list: List of sklearn.preprocessing.StandardScaler objects, one per
+              normalized feature, in the same order as scalable_particle_features.
 
-            Second Entry: StandardScalers corresponding to each normalized feature.
-            E.x. scalable_particle_features=[0, 1] returns a length 2 list, index 0 contains
-            the scaler used for the first feature, etc.
+    Example:
+        >>> X_train = np.random.rand(1000, 4, 6)
+        >>> X_normalized, scalers = normalize_data(X_train, [0, 1, 2])
+        >>> # scalers[0] is the scaler for feature 0, etc.
     """
     scalers = []
     scaled_train = train.copy()
@@ -97,17 +131,24 @@ def normalize_data(train, scalable_particle_features):
 
 
 def scale_data(data, scalers, scalable_particle_features):
-    """
-    Scales a selection of features in a (None, num_particles, num_features) dimension dataset
+    """Transform data using pre-fitted StandardScalers.
+
+    Applies pre-fitted scalers to transform specified features in the dataset.
+    Used to scale validation/test data using statistics from training data.
 
     Args:
-        data (numpy.ndarray):
-            np.array with shape (None, num_particles, num_features)
-        scalers (List of StandardScalers):
-            List of scalers to apply to the data
-        scalable_particle_features (List of int):
-            The corresponding indices at which to apply each of the scalers. E.x. scalers[0] will be applied
-            to data[:, :, scalable_particle_features[0]]
+        data: Array of shape (n_samples, n_particles, n_features) to be scaled.
+        scalers: List of sklearn.preprocessing.StandardScaler objects, pre-fitted
+            on training data.
+        scalable_particle_features: List of int, feature indices corresponding to
+            each scaler. scalers[i] is applied to data[:, :, scalable_particle_features[i]].
+
+    Returns:
+        numpy.ndarray: Scaled dataset with same shape as input.
+
+    Example:
+        >>> X_test = np.random.rand(200, 4, 6)
+        >>> X_test_scaled = scale_data(X_test, scalers, [0, 1, 2])
     """
     scaled_data = data.copy()
     for scaler, idx in zip(scalers, scalable_particle_features):
@@ -122,10 +163,31 @@ def scale_data(data, scalers, scalable_particle_features):
 
 
 def load_data(data_directory):
-    """
-    Load data from files, normalize, and prepare TF datasets
+    """Load and preprocess data for model training.
+
+    Loads all .npz files from train/val/test subdirectories, concatenates them,
+    applies pre-fitted scalers from preprocessing, and transposes to model input
+    format (n_samples, n_features, n_particles).
+
+    Args:
+        data_directory: Str, path to directory containing train/val/test subdirectories
+            and scaler pickle files (x_scaler_0.pkl, x_scaler_1.pkl, x_scaler_2.pkl,
+            y_scaler.pkl).
+
     Returns:
-        train_dataset, val_dataset, test_dataset
+        tuple: Six arrays in order:
+            - X_train_scaled: Scaled training features, shape (n_train, n_features, n_particles).
+            - y_train_scaled: Scaled training targets, shape (n_train, 1).
+            - X_val_scaled: Scaled validation features, shape (n_val, n_features, n_particles).
+            - y_val_scaled: Scaled validation targets, shape (n_val, 1).
+            - X_test_scaled: Scaled test features, shape (n_test, n_features, n_particles).
+            - y_test_scaled: Scaled test targets, shape (n_test, 1).
+
+    Note:
+        This function deletes intermediate variables to save memory after loading.
+
+    Example:
+        >>> X_train, y_train, X_val, y_val, X_test, y_test = load_data("processed_data")
     """
     X_trains, y_trains = [], []
     X_vals, y_vals = [], []
@@ -191,10 +253,31 @@ def load_data(data_directory):
 
 
 def load_data_original(data_directory):
-    """
-    Load data from files but does not scale or transpose
+    """Load raw unscaled data without preprocessing transformations.
+
+    Loads all .npz files from train/val/test subdirectories and concatenates them.
+    Unlike load_data(), this function does NOT apply scaling or transposition,
+    returning data in original (n_samples, n_particles, n_features) format.
+
+    Args:
+        data_directory: Str, path to directory containing train/val/test subdirectories
+            with .npz files.
+
     Returns:
-        train_dataset, val_dataset, test_dataset
+        tuple: Six arrays in order:
+            - X_train: Unscaled training features, shape (n_train, n_particles, n_features).
+            - y_train: Unscaled training targets, shape (n_train,).
+            - X_val: Unscaled validation features, shape (n_val, n_particles, n_features).
+            - y_val: Unscaled validation targets, shape (n_val,).
+            - X_test: Unscaled test features, shape (n_test, n_particles, n_features).
+            - y_test: Unscaled test targets, shape (n_test,).
+
+    Note:
+        Used for Lorentz addition baseline and transformed data evaluation where
+        original coordinate values are needed.
+
+    Example:
+        >>> X_train, y_train, X_val, y_val, X_test, y_test = load_data_original("processed_data")
     """
     X_trains, y_trains = [], []
     X_vals, y_vals = [], []
@@ -231,6 +314,30 @@ def load_data_original(data_directory):
 
 
 def calculate_metrics(y_true, y_pred, name):
+    """Calculate regression metrics for model evaluation.
+
+    Computes standard regression metrics including MSE, RMSE, MAE, R^2, and
+    relative errors to evaluate model performance.
+
+    Args:
+        y_true: Array of true target values (ground truth masses).
+        y_pred: Array of predicted target values (predicted masses).
+        name: Str, identifier for the model (e.g., "gnn_baseline") used as
+            dictionary key prefix.
+
+    Returns:
+        dict: Nested dictionary with structure {f"{name}_metrics": {...}} containing:
+            - mse: Mean squared error.
+            - rmse: Root mean squared error.
+            - mae: Mean absolute error.
+            - r2: R-squared (coefficient of determination).
+            - mean_relative_error: Mean of |y_true - y_pred| / |y_true|.
+            - median_relative_error: Median of |y_true - y_pred| / |y_true|.
+
+    Example:
+        >>> metrics = calculate_metrics(y_true, y_pred, "gnn_baseline")
+        >>> print(metrics["gnn_baseline_metrics"]["rmse"])
+    """
     mse = mean_squared_error(y_true, y_pred)
     rmse = np.sqrt(mse)
     mae = mean_absolute_error(y_true, y_pred)

@@ -1,9 +1,9 @@
-"""
-Module Name: callbacks
+"""TensorFlow/Keras callbacks for model training.
 
-Description:
-    TensorFlow callback functions for training models. These callbacks are parameterized
-    and can be used across different model training scripts.
+This module provides pre-configured callback sets for different training scenarios:
+- Standard callbacks with early stopping and learning rate reduction
+- No-stop callbacks for fixed-epoch training with LR scheduling
+- Finetuning callbacks for progressive encoder freezing
 
 Usage:
     from callbacks import get_standard_callbacks, get_no_stop_callbacks, get_finetuning_callbacks
@@ -21,16 +21,25 @@ def get_standard_callbacks(
     early_stopping_patience=6,
     reduce_lr_patience=2,
 ):
-    """
-    Standard callbacks with early stopping and learning rate reduction.
+    """Get standard training callbacks with early stopping.
+
+    Returns a list of callbacks including backup/restore, early stopping based on
+    validation loss, learning rate reduction on plateau, model checkpointing, and
+    CSV logging of training metrics.
 
     Args:
-        directory (str): Directory to save model and logs
-        early_stopping_patience (int): Patience for early stopping
-        reduce_lr_patience (int): Patience for learning rate reduction
+        directory: Str, directory to save model checkpoints, backups, and logs.
+        early_stopping_patience: Int, number of epochs with no improvement after
+            which training will be stopped. Default 6.
+        reduce_lr_patience: Int, number of epochs with no improvement after which
+            learning rate will be reduced. Default 2.
 
     Returns:
-        list: List of TensorFlow callbacks
+        list: List of tf.keras.callbacks for model training.
+
+    Example:
+        >>> callbacks = get_standard_callbacks("models/gnn_baseline")
+        >>> model.fit(X, y, callbacks=callbacks)
     """
     return [
         tf.keras.callbacks.BackupAndRestore(
@@ -59,15 +68,23 @@ def get_standard_callbacks(
 
 
 def get_no_stop_callbacks(directory, learning_rate_decay=0.95):
-    """
-    Callbacks without early stopping, using learning rate scheduling.
+    """Get callbacks for fixed-epoch training without early stopping.
+
+    Returns callbacks including backup/restore, exponential learning rate decay,
+    model checkpointing (best and last), and CSV logging. Suitable for contrastive
+    pretraining where you want to train for a fixed number of epochs.
 
     Args:
-        directory (str): Directory to save model and logs
-        learning_rate_decay (float): Learning rate decay factor per epoch
+        directory: Str, directory to save model checkpoints, backups, and logs.
+        learning_rate_decay: Float, multiplicative factor for learning rate decay
+            per epoch. Default 0.95.
 
     Returns:
-        list: List of TensorFlow callbacks
+        list: List of tf.keras.callbacks for model training.
+
+    Example:
+        >>> callbacks = get_no_stop_callbacks("models/siamese", learning_rate_decay=0.9)
+        >>> model.fit(X, y, epochs=50, callbacks=callbacks)
     """
     return [
         tf.keras.callbacks.BackupAndRestore(
@@ -101,18 +118,27 @@ def get_finetuning_callbacks(
     normal_lr=1e-4,
     lr_decay_factor=0.90,
 ):
-    """
-    Callbacks for finetuning with encoder freezing.
+    """Get callbacks for progressive encoder freezing during finetuning.
+
+    Returns callbacks including backup/restore, a custom FinetuningCallback that
+    freezes the encoder after a specified epoch and adjusts learning rate, model
+    checkpointing (best and last), and CSV logging. Used for finetuning pretrained
+    models where you first train the downstream head, then freeze the encoder and
+    continue training.
 
     Args:
-        directory (str): Directory to save model and logs
-        freeze_epoch (int): Epoch at which to freeze encoder
-        low_lr (float): Learning rate after freezing
-        normal_lr (float): Learning rate before freezing
-        lr_decay_factor (float): Learning rate decay factor
+        directory: Str, directory to save model checkpoints, backups, and logs.
+        freeze_epoch: Int, epoch at which to freeze the encoder weights. Default 3.
+        low_lr: Float, learning rate to use after freezing encoder. Default 5e-6.
+        normal_lr: Float, learning rate to use before freezing. Default 1e-4.
+        lr_decay_factor: Float, multiplicative factor for LR decay per epoch. Default 0.90.
 
     Returns:
-        list: List of TensorFlow callbacks
+        list: List of tf.keras.callbacks for model training.
+
+    Example:
+        >>> callbacks = get_finetuning_callbacks("models/siamese_finetune", freeze_epoch=3)
+        >>> model.fit(X, y, epochs=25, callbacks=callbacks)
     """
     return [
         tf.keras.callbacks.BackupAndRestore(

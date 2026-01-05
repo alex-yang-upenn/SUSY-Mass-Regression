@@ -1,17 +1,10 @@
-"""
-Module Name: SimCLR_Model
+"""SimCLR model implementation for contrastive learning.
 
-Description:
-    This module provides a custom Tensorflow Model for SimCLR contrastive learning. The SimCLRModel is
-    internally composed of an encoder linked to a projection head. The encoder is a standard GNN
-    followed by dense layers. The projection head is a simple model with only dense layers. To improve
-    learning, the SimCLR loss function is applied to the output of the projection head. For downstream
-    tasks however, the embeddings produced by the encoder are used.
-
-Usage:
-Author:
-Date:
-License:
+This module implements the SimCLR (Simple Framework for Contrastive Learning of
+Visual Representations) architecture adapted for particle physics. The model consists
+of an encoder (GNN + dense layers) and a projection head. During pretraining, the
+projection head outputs are used for contrastive loss. For downstream tasks, only
+the encoder embeddings are used.
 """
 
 import tensorflow as tf
@@ -21,9 +14,33 @@ from loss_functions import SimCLRNTXentLoss
 
 
 class SimCLRModel(tf.keras.Model):
+    """SimCLR model for self-supervised contrastive learning.
+
+    Attributes:
+        n_features: Int, number of particle features.
+        f_r_units: List of int, hidden layer sizes for GNN edge function.
+        f_o_units: List of int, hidden layer sizes for GNN node function.
+        phi_C_units: List of int, hidden layer sizes for encoder dense layers.
+        proj_units: List of int, hidden layer sizes for projection head.
+        encoder: tf.keras.Model, GNN encoder producing embeddings.
+        projection_head: tf.keras.Model, projection head for contrastive loss.
+    """
+
     def __init__(
         self, n_features, f_r_units, f_o_units, phi_C_units, proj_units, **kwargs
     ):
+        """Initialize SimCLR model.
+
+        Args:
+            n_features: Int, number of features per particle.
+            f_r_units: List of int, GNN edge function layer sizes.
+            f_o_units: List of int, GNN node function layer sizes.
+            f_o_units: List of int, GNN node function layer sizes.
+            phi_C_units: List of int, encoder dense layer sizes. Last value is
+                embedding dimension.
+            proj_units: List of int, projection head layer sizes.
+            **kwargs: Additional keyword arguments for tf.keras.Model.
+        """
         super().__init__(**kwargs)
 
         # Store configurations
@@ -41,6 +58,11 @@ class SimCLRModel(tf.keras.Model):
         self.projection_head = self._create_projection_head(self.proj_units)
 
     def build(self, input_shape):
+        """Build model by initializing encoder and projection head.
+
+        Args:
+            input_shape: Tuple of two shapes for (view1, view2) inputs.
+        """
         # Two inputs [view1, view2], each with shape (batch_size, n_features, None)
         self.encoder.build(input_shape[0])
         self.projection_head.build((None, self.phi_C_units[-1]))
@@ -48,6 +70,16 @@ class SimCLRModel(tf.keras.Model):
         super().build(input_shape)
 
     def call(self, inputs):
+        """Forward pass through encoder and projection head for both views.
+
+        Args:
+            inputs: Tuple (view1, view2) of augmented input tensors, each of
+                shape (batch_size, n_features, n_particles).
+
+        Returns:
+            Tensor of shape (batch_size, 2, proj_dim) containing projection
+            head outputs for both views, stacked along dimension 1.
+        """
         # Unpack the two views
         view1, view2 = inputs
 
@@ -157,18 +189,27 @@ def create_simclr_model(
     temp,
     learning_rate,
 ):
-    """
-    Factory method to create and compile a SimCLR model
+    """Create and compile a SimCLR model with NT-Xent loss.
+
+    Factory function to instantiate a SimCLRModel with specified architecture
+    and compile it with Adam optimizer and SimCLR contrastive loss.
 
     Args:
-        n_features (int): Number of features (1st dimension of sample)
-        f_r_units (tuple of int): Size of each layer in the F_R function in the GNN
-        f_o_units (tuple of int): Size of each layer in the F_O function in the GNN
-        phi_C_units (tuple of int):
-            Size of each layer in the Phi_C function in the GNN. The last entry in this tuple will become
-            the dimension of the embeddings produced by the encoder.
-        proj_units (tuple of int):
-            Size of each layer in the Projection Head
+        n_features: Int, number of features per particle.
+        f_r_units: List of int, GNN edge function layer sizes.
+        f_o_units: List of int, GNN node function layer sizes.
+        phi_C_units: List of int, encoder dense layer sizes. The last value
+            determines the embedding dimension.
+        proj_units: List of int, projection head layer sizes.
+        temp: Float, temperature parameter for NT-Xent loss (typically 0.1).
+        learning_rate: Float, learning rate for Adam optimizer.
+
+    Returns:
+        Compiled SimCLRModel ready for training.
+
+    Example:
+        >>> model = create_simclr_model(6, [96, 64], [128, 96], [32, 16],
+        ...                              [24, 32], temp=0.1, learning_rate=0.0001)
     """
     model = SimCLRModel(
         n_features,

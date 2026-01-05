@@ -1,14 +1,9 @@
-"""
-Module Name: downstream_model
+"""Downstream models for finetuning pretrained encoders.
 
-Description:
-    This module includes a custom Tensorflow model combining a pretrained encoder with
-    downstream layers. It also includes a custom callback that controls finetuning
-
-Usage:
-Author:
-Date:
-License:
+This module provides custom TensorFlow models that combine pretrained encoders
+(from SimCLR or other pretraining) with downstream regression layers. Includes
+models for finetuning with or without projection heads, and a custom callback
+for progressive encoder freezing.
 """
 
 from copy import deepcopy
@@ -21,6 +16,22 @@ from simCLR_model import *
 
 
 class FinetunedNN(tf.keras.Model):
+    """Neural network with pretrained encoder and downstream regression head.
+
+    Loads a pretrained encoder and adds dense layers for downstream regression
+    tasks. Supports freezing/unfreezing the encoder during training.
+
+    Attributes:
+        encoder_path: Str, path to saved encoder model.
+        downstream_units: List of int, hidden layer sizes for downstream head.
+        encoder_architecture_json: Str, JSON representation of encoder architecture.
+        output_dim: Int, dimension of output (typically 1 for regression).
+        trainable_encoder: Bool, whether encoder weights are trainable.
+        encoder: tf.keras.Model, pretrained encoder.
+        f_R: tf.keras.Sequential, downstream dense layers.
+        output_layer: tf.keras.layers.Dense, final output layer.
+    """
+
     def __init__(
         self,
         encoder_path,
@@ -31,6 +42,19 @@ class FinetunedNN(tf.keras.Model):
         load_from_path=True,
         **kwargs,
     ):
+        """Initialize FinetunedNN.
+
+        Args:
+            encoder_path: Str, path to saved encoder model file.
+            downstream_units: List of int, hidden layer sizes for downstream head.
+            encoder_architecture_json: Str or None, JSON string of encoder architecture
+                (used when loading from config).
+            output_dim: Int, output dimension. Default 1 for regression.
+            trainable_encoder: Bool, whether encoder is trainable. Default True.
+            load_from_path: Bool, whether to load encoder from path (True) or from
+                JSON (False). Default True.
+            **kwargs: Additional keyword arguments for tf.keras.Model.
+        """
         super().__init__(**kwargs)
 
         self.encoder_path = encoder_path

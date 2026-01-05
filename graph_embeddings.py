@@ -1,26 +1,42 @@
-"""
-Module Name: graph_embeddings
+"""Graph Neural Network layer for particle physics embeddings.
 
-Description:
-    Custom Tensorflow layer that implements a Graph Neural Network to transform particle data to embeddings.
-    Layer architecture:
-        - Constructs adjacency matrices based on number of particles in batch
-        - Constructs B_pp, concatenation of each edge's sender and receiver features
-        - Applies trainable function f_R to each edge in B_pp to obtain E_pp hidden representation
-        - Append input and E_pp to create C_pp_D combined representation
-        - Applies trainable function f_O to obtain O_post post-interaction representation
-        - Sums over O_post columns to obtain embeddings
-Usage:
-Author:
-Date:
-License:
+This module implements a custom TensorFlow/Keras layer that processes particle
+data as graphs. Each particle is a node, and edges connect all particle pairs.
+The layer learns message-passing functions to aggregate information across the
+graph and produce fixed-size embeddings via global pooling.
 """
 
 import tensorflow as tf
 
 
 class GraphEmbeddings(tf.keras.layers.Layer):
+    """Graph Neural Network layer using edge-based message passing.
+
+    Implements a GNN that:
+    1. Constructs fully-connected graph (all-to-all particle connections)
+    2. Applies edge function f_R to learn edge representations
+    3. Aggregates edge messages back to nodes
+    4. Applies node function f_O for post-interaction representations
+    5. Global sum pooling to produce fixed-size embeddings
+
+    Attributes:
+        output_dim: Int, dimension of output embeddings.
+        f_r_units: List of int, hidden layer sizes for edge function f_R.
+        f_o_units: List of int, hidden layer sizes for node function f_O.
+        f_R: tf.keras.Sequential, edge message function.
+        f_O: tf.keras.Sequential, node update function.
+    """
+
     def __init__(self, f_r_units, f_o_units, **kwargs):
+        """Initialize GraphEmbeddings layer.
+
+        Args:
+            f_r_units: List of int, hidden layer sizes for edge function.
+                For example, [96, 64, 32] creates a 3-layer network.
+            f_o_units: List of int, hidden layer sizes for node function.
+                The last value determines the output embedding dimension.
+            **kwargs: Additional keyword arguments for tf.keras.layers.Layer.
+        """
         super().__init__(**kwargs)
 
         self.output_dim = f_o_units[-1]
@@ -53,6 +69,11 @@ class GraphEmbeddings(tf.keras.layers.Layer):
         )
 
     def build(self, input_shape):
+        """Build layer by initializing f_R and f_O with correct input shapes.
+
+        Args:
+            input_shape: Tuple, expected input shape (batch_size, n_features, n_particles).
+        """
         P = input_shape[1]
 
         self.f_R.build((None, None, 2 * P))
@@ -63,6 +84,15 @@ class GraphEmbeddings(tf.keras.layers.Layer):
 
     @tf.function(reduce_retracing=True)
     def call(self, x, training=None):
+        """Forward pass of Graph Neural Network layer.
+
+        Args:
+            x: Input tensor of shape (batch_size, n_features, n_particles).
+            training: Bool or None, whether in training mode (affects batch norm).
+
+        Returns:
+            Tensor of shape (batch_size, output_dim) containing graph embeddings.
+        """
         n_particles = tf.shape(x)[2]
         rr, rr_t, rs = self._create_interaction_matrices(n_particles)
 
@@ -95,9 +125,31 @@ class GraphEmbeddings(tf.keras.layers.Layer):
         return tf.reduce_sum(O_post, axis=2)  # [batch_size, D_O]
 
     def compute_output_shape(self, input_shape):
+        """Compute output shape for given input shape.
+
+        Args:
+            input_shape: Tuple, input shape (batch_size, n_features, n_particles).
+
+        Returns:
+            Tuple: Output shape (batch_size, output_dim).
+        """
         return (input_shape[0], self.output_dim)
 
     def _create_interaction_matrices(self, n):
+        """Create interaction matrices for fully-connected particle graph.
+
+        Constructs matrices that encode sender-receiver relationships for all
+        edges in a fully-connected graph (excluding self-loops).
+
+        Args:
+            n: Int or Tensor, number of particles (nodes) in the graph.
+
+        Returns:
+            tuple: Three tensors (rr, rr_t, rs) where:
+                - rr: Receiver matrix, shape (n, n*(n-1))
+                - rr_t: Transposed receiver matrix, shape (n*(n-1), n)
+                - rs: Sender matrix, shape (n, n*(n-1))
+        """
         i, j = tf.meshgrid(tf.range(n), tf.range(n))  # Adjacency Matrix
         mask = i != j  # All directed edges except for self-loops
 

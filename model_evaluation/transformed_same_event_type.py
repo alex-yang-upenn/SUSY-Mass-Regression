@@ -1,14 +1,7 @@
-"""
-Module Name: model_comparison/transformed_same_event_type
+"""Evaluates models on augmented test data by event type.
 
-Description:
-    Identical evaluation as same_event_type, a file by file comparison of models' performance. However, this module
-    first applies an augmentation to the input data.
-
-Usage:
-Author:
-Date:
-License:
+Compares model performance file-by-file with particle deletion transformations applied.
+Generates dual histograms for selected events, accuracy plots, and metrics JSON files.
 """
 
 import os

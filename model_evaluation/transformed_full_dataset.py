@@ -1,14 +1,7 @@
-"""
-Module Name: model_comparison/full_dataset
+"""Evaluates models on the full augmented test dataset.
 
-Description:
-    Identical evaluation as full_dataset, a comparison of models' performance on the full
-    test dataset. However, this module first applies an augmentation to the input data.
-
-Usage:
-Author:
-Date:
-License:
+Compares model performance across the entire test set with particle deletion transformations,
+generates variance comparison plots, and outputs metrics to transformed_metrics.json.
 """
 
 import json

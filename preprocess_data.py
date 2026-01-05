@@ -1,22 +1,15 @@
-"""
-Module Name: preprocess_data
+"""Preprocessing script for SUSY signal event data.
 
-Description:
-    Reads the data from ROOT files and stores it into numpy files, with train/test/validation splits. Extracts
-    information according to values set in config.py or config_set2.py
+This module converts raw ROOT files containing SUSY signal events into preprocessed
+NumPy arrays with train/validation/test splits for mass regression tasks.
 
-    The resulting input has shape (N_EVENTS, N_PARTICLES, N_FEATURES). The resulting target has shape (N_EVENTS),
-    with a single target mass value for each event.
+The script extracts particle features (pt, eta, phi) and applies one-hot encoding
+for particle types (MET, Lepton, Gluon, Other). Output shape is (N_EVENTS, N_PARTICLES,
+N_FEATURES) for inputs and (N_EVENTS,) for target masses.
 
-    N_FEATURES dimension is [pt, eta, phi, one-hot_1, one-hot_2, one-hot_3, ...], where the one-hot encoded values
-    indicate MET, Lepton, Gluon, or Other particles respectively
-
-Usage:
+Typical usage example:
     python preprocess_data.py              # uses config.yaml
     python preprocess_data.py --dataset set2  # uses config_set2.yaml
-Author:
-Date:
-License:
 """
 
 import os
@@ -32,6 +25,19 @@ np.random.seed(42)
 
 
 def main():
+    """Process raw ROOT signal data files into NumPy format with train/val/test splits.
+
+    Iterates through all ROOT files in the configured raw data directory, extracts
+    particle features and target masses (T1M) from decay chains, and saves split
+    datasets as compressed NumPy arrays. Also extracts METEta as auxiliary target.
+
+    The function:
+        1. Loads configuration (dataset 1 or set2) from command line args
+        2. Creates output directories for train/val/test splits
+        3. Processes each ROOT file to extract event features
+        4. Performs 80/10/10 train/val/test split
+        5. Saves compressed .npz files with X (features), y (mass), and y_eta
+    """
     # Load configuration based on command line argument
     dataset_type = get_dataset_type_from_args()
     config = load_config(dataset_type)

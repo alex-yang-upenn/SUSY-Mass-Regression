@@ -1,17 +1,7 @@
-"""
-Module Name: model_evaluation/background_test
+"""Evaluates models on background data.
 
-Description:
-    Tests all trained models against background data (test_TbqqTblv.npz).
-    Creates dual histograms for pairwise model comparisons to analyze how
-    different models respond to background events.
-
-Usage:
-    python background_test.py
-
-Author:
-Date:
-License:
+Tests all trained models against background events (test_TbqqTblv.npz) and
+creates dual histograms for pairwise model comparisons.
 """
 
 import os

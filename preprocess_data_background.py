@@ -1,21 +1,16 @@
-"""
-Module Name: preprocess_data_background
+"""Preprocessing script for SUSY background event data.
 
-Description:
-    Reads the data from the background event ROOT file, extracts information, and reformats it to look like
-    an input to the models. Stores the result in numpy files.
+This module converts the background event ROOT file (test_TbqqTblv.root) into preprocessed
+NumPy arrays formatted for compatibility with the signal event models.
 
-    The resulting input has shape (N_EVENTS, N_PARTICLES, N_FEATURES), where N_PARTICLES = 4
-    and N_FEATURES = 6 for the current dataset. The resulting target has shape (N_EVENTS), with a single target
-    mass value for each event.
+Background events represent non-SUSY processes and are used for model evaluation.
+The script extracts features from two decay chains (P1 and P2) per event, selecting
+specific particles (lepton and second particle from each chain) to match the signal
+data format. Output shape is (N_EVENTS, 4, N_FEATURES) where 4 particles are selected
+and features include pt, eta, phi, and one-hot encoded particle types (MET, Lepton, Other).
 
-    N_FEATURES dimension is [pt, eta, phi, one-hot_1, one-hot_2, one-hot_3], where the one-hot encoded values
-    indicate MET, Lepton, or Other particles respectively
-
-Usage:
-Author:
-Date:
-License:
+Typical usage example:
+    python preprocess_data_background.py
 """
 
 import os
@@ -32,6 +27,22 @@ BACKGROUND_FILE = "test_TbqqTblv.root"
 
 
 def main():
+    """Process raw background ROOT data into NumPy format for model evaluation.
+
+    Extracts features from the background event file (test_TbqqTblv.root) by processing
+    two decay chains per event. Selects 4 particles total (2 from each chain: lepton
+    and second particle) to create feature arrays compatible with signal data models.
+
+    The function:
+        1. Opens the background ROOT file from configured directory
+        2. Iterates through all events in the 'test' tree
+        3. Extracts features from P1 and P2 decay chains
+        4. Selects specific particles (indices 1 and 2) from each chain
+        5. Saves compressed .npz file with X (features) only
+
+    Note:
+        Background data has no target masses, only features are saved.
+    """
     file = ROOT.TFile.Open(
         os.path.join(config.RAW_DATA_BACKGROUND_DIRECTORY, BACKGROUND_FILE)
     )

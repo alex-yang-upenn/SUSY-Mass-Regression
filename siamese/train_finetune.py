@@ -1,17 +1,13 @@
-"""
-Module Name: train_finetune
+"""Progressive finetuning of pretrained encoder for mass regression.
 
-Description:
-    This module trains a downstream neural network on top of an encoder to predict SUSY particle
-    masses, taking advantage of the Contrastive Learning embeddings. For the first few training epochs,
-    the encoder weights are finetuned alongside the downstream neural network. The weights are
-    frozen for the rest of training.
+Trains a downstream regression head on top of the pretrained SimCLR encoder.
+Uses progressive encoder freezing: encoder weights are trainable for initial
+epochs (warm-up phase), then frozen while the downstream head continues training.
+This strategy balances adaptation and preservation of pretrained features.
 
 Usage:
-    python train_finetune.py --config config_set2.yaml  # uses config_set2.yaml
-Author:
-Date:
-License:
+    python3 -m siamese.train_finetune                    # Uses config.yaml
+    python3 -m siamese.train_finetune --config set2      # Uses config_set2.yaml
 """
 
 import json

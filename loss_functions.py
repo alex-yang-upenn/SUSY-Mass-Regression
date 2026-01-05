@@ -1,34 +1,47 @@
-"""
-Module Name: loss_functions
+"""Custom TensorFlow loss functions for contrastive learning.
 
-Description:
-    Custom Tensorflow loss functions for unsupervised contrastive learning
-
-Usage:
-Author:
-Date:
-License:
+This module implements loss functions for self-supervised and contrastive learning,
+including SimCLR's NT-Xent loss and VICReg loss. These losses enable models to learn
+useful representations without labeled data by contrasting augmented views.
 """
 
 import tensorflow as tf
 
 
 class SimCLRNTXentLoss(tf.keras.losses.Loss):
-    """
-    SimCLR loss implementation
+    """Normalized Temperature-scaled Cross Entropy (NT-Xent) loss for SimCLR.
+
+    Implements the contrastive loss from SimCLR (Chen et al., 2020) that encourages
+    representations of augmented views to be similar while being dissimilar to
+    other samples. Uses temperature scaling to control the concentration of the
+    distribution.
+
+    Attributes:
+        temp: Float, temperature parameter for scaling. Lower values create
+            sharper distributions and harder negatives.
     """
 
     def __init__(self, temp):
-        """
-        Constructor
+        """Initialize SimCLRNTXentLoss.
 
         Args:
-            temp: Temperature parameter
+            temp: Float, temperature parameter (typically 0.1 to 1.0).
         """
         super().__init__()
         self.temp = temp
 
     def call(self, y_true, y_pred):
+        """Compute NT-Xent loss for a batch of embedding pairs.
+
+        Args:
+            y_true: Unused labels (kept for Keras API compatibility).
+            y_pred: Tensor of shape (batch_size, 2, embedding_dim) where
+                y_pred[:, 0] is anchor embeddings and y_pred[:, 1] is
+                positive (augmented) embeddings.
+
+        Returns:
+            Scalar tensor containing the mean NT-Xent loss over the batch.
+        """
         # Unpack embeddings
         anchor = y_pred[:, 0]
         positive = y_pred[:, 1]
@@ -58,10 +71,23 @@ class SimCLRNTXentLoss(tf.keras.losses.Loss):
         return loss
 
     def get_config(self):
+        """Get configuration dict for serialization.
+
+        Returns:
+            dict: Configuration containing temperature parameter.
+        """
         return {"temp": self.temp}
 
     @classmethod
     def from_config(cls, config):
+        """Create loss instance from configuration dict.
+
+        Args:
+            config: Dict containing 'temp' key.
+
+        Returns:
+            SimCLRNTXentLoss instance.
+        """
         return cls(**config)
 
 
@@ -75,14 +101,30 @@ class SimCLRNTXentLoss(tf.keras.losses.Loss):
 def vicreg_loss(
     y_true, y_pred, inv_weight=25.0, var_weight=25.0, cov_weight=1.0, gamma=1.0
 ):
-    """VICReg loss implementation
+    """Variance-Invariance-Covariance Regularization (VICReg) loss.
+
+    Implements VICReg loss (Bardes et al., 2022) that prevents collapse in
+    self-supervised learning through three terms:
+    1. Invariance: Encourages similar representations for augmented views
+    2. Variance: Maintains variance in each embedding dimension
+    3. Covariance: Decorrelates different embedding dimensions
+
     Args:
-        y_true: Unused label tensor
-        y_pred: Tuple of (embedding1, embedding2) from model
-        inv_weight: Weight of invariance (similarity) term in loss function
-        var_weight: Weight of variance term in loss function
-        cov_weight: Weight of covariance term in loss function
-        gamma: Constant target value used for hinge loss in variance term
+        y_true: Unused labels (kept for Keras API compatibility).
+        y_pred: Tuple or list of two tensors (embedding1, embedding2), each of
+            shape (batch_size, embedding_dim), representing two augmented views.
+        inv_weight: Float, weight for invariance term. Default 25.0.
+        var_weight: Float, weight for variance term. Default 25.0.
+        cov_weight: Float, weight for covariance term. Default 1.0.
+        gamma: Float, target standard deviation for variance term. Default 1.0.
+
+    Returns:
+        Scalar tensor containing weighted sum of invariance, variance, and
+        covariance losses.
+
+    Example:
+        >>> loss_fn = lambda y_true, y_pred: vicreg_loss(y_true, y_pred, inv_weight=25.0)
+        >>> model.compile(optimizer='adam', loss=loss_fn)
     """
     embedding1, embedding2 = y_pred[0], y_pred[1]
     batch_size = tf.shape(embedding1)[0]
