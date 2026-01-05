@@ -1,11 +1,11 @@
 {
     "gnn_baseline_metrics": {
-        "mse": 106925.015625,
-        "rmse": 326.9939076267324,
-        "mae": 252.2757568359375,
-        "r2": 0.8753906488418579,
-        "mean_relative_error": 0.05907066538929939,
-        "median_relative_error": 0.04757041484117508
+        "mse": 88248.6484375,
+        "rmse": 297.0667407124197,
+        "mae": 227.5185546875,
+        "r2": 0.8971558809280396,
+        "mean_relative_error": 0.05351954326033592,
+        "median_relative_error": 0.04221072047948837
     },
     "gnn_transformed_metrics": {
         "mse": 1197934.875,
@@ -16,12 +16,12 @@
         "median_relative_error": 0.16197609901428223
     },
     "siamese_finetune_metrics": {
-        "mse": 84234.6953125,
-        "rmse": 290.2321403850718,
-        "mae": 221.87646484375,
-        "r2": 0.901833713054657,
-        "mean_relative_error": 0.052240509539842606,
-        "median_relative_error": 0.04112347215414047
+        "mse": 89989.59375,
+        "rmse": 299.98265574862825,
+        "mae": 231.54971313476562,
+        "r2": 0.89512699842453,
+        "mean_relative_error": 0.054531279951334,
+        "median_relative_error": 0.043367333710193634
     },
     "siamese_no_finetune_metrics": {
         "mse": 535138.375,

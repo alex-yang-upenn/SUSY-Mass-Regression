@@ -173,7 +173,7 @@ def main():
         model_key: create_performance_dict() for model_key in MODEL_CONFIGS.keys()
     }
 
-    # Setup metrics tracker
+    # Setup metrics tracker for selected event types
     same_event_type_metrics = {}
 
     # Iterate across each file

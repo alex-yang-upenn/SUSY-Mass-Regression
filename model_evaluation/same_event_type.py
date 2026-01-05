@@ -153,7 +153,7 @@ def main():
         model_key: create_performance_dict() for model_key in MODEL_CONFIGS.keys()
     }
 
-    # Setup metrics tracker
+    # Setup metrics tracker for selected event types
     same_event_type_metrics = {}
 
     # Iterate across each file
@@ -214,7 +214,7 @@ def main():
     )
     os.makedirs(metric_dir, exist_ok=True)
     with open(os.path.join(metric_dir, "same_event_type_metrics.json"), "w") as f:
-        json.dump(metrics, f, indent=4)
+        json.dump(same_event_type_metrics, f, indent=4)
 
 
 if __name__ == "__main__":
