@@ -107,23 +107,8 @@ SUSY-Mass-Regression/
 pip install -r requirements.txt
 ```
 
-**Required packages:**
-- `tensorflow`: Deep learning framework
-- `numpy`: Numerical computations
-- `scikit-learn`: Data preprocessing and metrics
-- `matplotlib`: Visualization
-- `PyYAML`: Configuration file parsing
-- `tqdm`: Progress bars
-- `keras_tuner`: Hyperparameter tuning (optional)
-- `black`, `isort`, `pre-commit`: Code formatting (optional)
+**Note:** This codebase also requires ROOT (CERN's data analysis framework) for reading `.root` files. Follow instructions at: https://root.cern/install/#download-a-pre-compiled-binary-distribution
 
-**Note:** This codebase also requires ROOT (CERN's data analysis framework) for reading `.root` files. Install via:
-```bash
-# For conda users:
-conda install -c conda-forge root
-
-# Or follow instructions at: https://root.cern/install/
-```
 
 ### 2. Download Data
 
@@ -189,32 +174,6 @@ Each `.npz` file contains:
 - `y`: Target masses, shape `(n_events,)`
 - `y_eta`: MET pseudorapidity, shape `(n_events,)`
 
-### 4. Verify Data
-
-Check that preprocessed files exist and have correct shapes:
-
-```bash
-python3 -c "
-import numpy as np
-data = np.load('processed_data/test/test_qX_qWY_qqqlv_X200_Y60.npz')
-print(f'X shape: {data[\"X\"].shape}')
-print(f'y shape: {data[\"y\"].shape}')
-"
-```
-
-Expected output for Dataset 1:
-```
-X shape: (n_events, 4, 6)
-y shape: (n_events,)
-```
-
-Expected output for Dataset 2:
-```
-X shape: (n_events, 12, 7)
-y shape: (n_events,)
-```
-
----
 
 ## Configuration Files
 
@@ -724,36 +683,3 @@ Models save `StandardScaler` objects during training:
 - `y_scaler.pkl`: Scale target mass values
 
 These must be loaded during evaluation to properly scale inputs/outputs.
-
-### GPU Usage
-
-Training scripts automatically use GPU if available (via TensorFlow). To control GPU visibility:
-```bash
-# Use specific GPU
-CUDA_VISIBLE_DEVICES=0 python3 -m gnn_baseline.gnn
-
-# Use CPU only
-CUDA_VISIBLE_DEVICES=-1 python3 -m gnn_baseline.gnn
-```
-
-### Code Formatting
-
-This project uses `black` and `isort` for code formatting:
-```bash
-# Install pre-commit hooks
-pre-commit install
-
-# Manually format
-black .
-isort .
-```
-
----
-
-## Citation
-
-If you use this code in your research, please cite appropriately.
-
-## License
-
-[Specify your license here]
