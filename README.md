@@ -51,38 +51,19 @@ SUSY-Mass-Regression/
 
 #### `gnn_baseline/`
 - **`gnn.py`**: Standard supervised learning GNN
-  - Architecture: GraphEmbeddings → Dense layers → Single output
-  - Trains on original (non-augmented) data
-  - Uses early stopping and learning rate reduction
-  - Outputs: `best_model.keras`, `results.json`, `training_logs.csv`
 
 #### `gnn_transformed/`
 - **`gnn_transformed.py`**: GNN trained with data augmentation
-  - Same architecture as baseline but with random particle deletion
-  - No early stopping, uses learning rate scheduling
-  - Evaluates robustness to input perturbations
 
 #### `siamese/`
 - **`siamese.py`**: SimCLR contrastive learning model
-  - Self-supervised pretraining with augmented view pairs
-  - Saves encoder separately: `best_model_encoder.keras`
-  - Generates embeddings: `train_embeddings.npz`, `val_embeddings.npz`, `test_embeddings.npz`
 
 - **`train_finetune.py`**: Downstream task with progressive finetuning
-  - Initial epochs: encoder trainable with low learning rate
-  - Later epochs: encoder frozen with higher learning rate
-  - Uses `FinetunedNN` model with `FinetuningCallback`
 
 - **`train_no_finetune.py`**: Downstream task with frozen encoder
-  - Only trains downstream layers
-  - Tests pure representation quality
 
 #### `lorentz_addition/`
 - **`lorentz_addition.py`**: Physics-based baseline approach
-  - Naively sums 4-momentum vectors of all visible particles
-  - Assumes MET pseudorapidity = 0
-  - Serves as performance baseline for ML models
-  - `lorentz_addition_set2.py`: Same approach for dataset 2
 
 ### Model Evaluation
 
@@ -112,7 +93,7 @@ pip install -r requirements.txt
 
 ### 2. Download Data
 
-Place your ROOT data files in the appropriate directories:
+Place ROOT data files in the appropriate directories:
 
 **Dataset 1 (4 particles, 6 features):**
 ```
@@ -149,7 +130,7 @@ python3 preprocess_data.py
 
 **For Dataset 2:**
 ```bash
-python3 preprocess_data.py --dataset set2
+python3 preprocess_data_set2.py
 ```
 
 **For Background data:**
@@ -174,6 +155,7 @@ Each `.npz` file contains:
 - `y`: Target masses, shape `(n_events,)`
 - `y_eta`: MET pseudorapidity, shape `(n_events,)`
 
+---
 
 ## Configuration Files
 
@@ -181,73 +163,6 @@ Each `.npz` file contains:
 
 Controls settings for the 4-particle, 6-feature dataset:
 
-**Directory paths:**
-```yaml
-RAW_DATA_DIRECTORY: raw_data
-PROCESSED_DATA_DIRECTORY: processed_data
-```
-
-**Data structure parameters:**
-```yaml
-DECAY_CHAIN: ["P1"]             # Single decay chain
-N_PARTICLES: 4                  # Number of particles per event
-N_FEATURES: 6                   # Features: [pt, eta, phi, one-hot_MET, one-hot_Lepton, one-hot_Other]
-MET_IDS: [12]                   # Particle ID for missing transverse energy
-LEPTON_IDS: [11]                # Particle ID for leptons
-TRAIN_TEST_SPLIT: 0.2           # 20% for validation+test
-SCALABLE_FEATURES: [0, 1, 2]    # Scale pt, eta, phi (not one-hot encoded features)
-```
-
-**Evaluation files:**
-```yaml
-eval_data_files:                # Test files for per-event-type evaluation
-  - test_qX_qWY_qqqlv_X200_Y60.npz
-  - test_qX_qWY_qqqlv_X250_Y80.npz
-  - test_qX_qWY_qqqlv_X300_Y100.npz
-  - test_qX_qWY_qqqlv_X350_Y130.npz
-  - test_qX_qWY_qqqlv_X400_Y160.npz
-```
-
-**Model hyperparameters:**
-```yaml
-# GNN Baseline
-GNN_BASELINE_F_R_LAYER_SIZES: [96, 64, 32]     # Relation network layers
-GNN_BASELINE_F_O_LAYER_SIZES: [128, 64, 32]    # Object network layers
-GNN_BASELINE_PHI_C_LAYER_SIZES: [16, 8, 4]     # Downstream dense layers
-GNN_BASELINE_LEARNING_RATE: 0.0005
-GNN_BASELINE_EARLY_STOPPING_PATIENCE: 6
-GNN_BASELINE_REDUCE_LR_PATIENCE: 2
-
-# GNN Transformed (with augmentation)
-GNN_TRANSFORMED_LEARNING_RATE: 0.0005
-GNN_TRANSFORMED_LEARNING_RATE_DECAY: 0.9
-
-# Siamese (SimCLR contrastive learning)
-SIAMESE_PHI_C_LAYER_SIZES: [16]                # Encoder output layers
-SIAMESE_PROJ_HEAD_LAYER_SIZES: [24, 32]        # Projection head layers
-SIAMESE_LEARNING_RATE: 0.0001
-
-# Downstream finetuning
-DOWNSTREAM_FREEZE_EPOCH: 3                      # Freeze encoder after this epoch
-DOWNSTREAM_LEARNING_RATE: 0.000005             # LR when encoder trainable
-DOWNSTREAM_FROZEN_LEARNING_RATE: 0.0001        # LR when encoder frozen
-DOWNSTREAM_LR_DECAY: 0.90
-DOWNSTREAM_LAYER_SIZES: [8, 4]                 # Downstream head layers
-
-# Training
-BATCHSIZE: 128
-EPOCHS: 20                                      # GNN baseline/transformed
-FINETUNE_EPOCHS: 15                            # Downstream finetuning
-SIAMESE_EPOCHS: 30                             # SimCLR pretraining
-SIMCLR_LOSS_TEMP: 0.1                          # Temperature for contrastive loss
-
-# Augmentation
-NUM_PARTICLES_TO_DELETE: 1                     # Number of particles to randomly delete
-
-# Output
-RUN_ID: 3                                      # Model version ID
-DATASET_NAME: ""                               # Suffix for output folders
-```
 
 ### `config_set2.yaml` (Dataset 2)
 
@@ -262,16 +177,13 @@ GLUON_IDS: [21]                 # Additional particle type
 
 # Larger network architectures
 GNN_BASELINE_F_O_LAYER_SIZES: [128, 96, 64]    # More layers
-GNN_BASELINE_PHI_C_LAYER_SIZES: [32, 16, 8]
-SIAMESE_PHI_C_LAYER_SIZES: [64]
-SIAMESE_PROJ_HEAD_LAYER_SIZES: [96, 128]
-DOWNSTREAM_LAYER_SIZES: [128, 64, 32, 16]
+...
 
 # More training epochs
-BATCHSIZE: 256
 EPOCHS: 30
 FINETUNE_EPOCHS: 25
 SIAMESE_EPOCHS: 50
+...
 
 # More aggressive augmentation
 NUM_PARTICLES_TO_DELETE: 2
@@ -295,14 +207,11 @@ python3 -m gnn_baseline.gnn
 
 **For Dataset 2:**
 ```bash
-python3 -m gnn_baseline.gnn --config set2
+python3 -m gnn_baseline.gnn --config config_set2.yaml
 ```
 
-**What it does:**
 - Trains a standard Graph Neural Network with supervised learning
 - Architecture: GraphEmbeddings (GNN) → Dense layers → Regression output
-- Uses early stopping and learning rate reduction on plateau
-- Trains on non-augmented data
 
 **Outputs:**
 ```
@@ -329,7 +238,6 @@ python3 -m gnn_transformed.gnn_transformed
 python3 -m gnn_transformed.gnn_transformed --config set2
 ```
 
-**What it does:**
 - Same architecture as GNN baseline
 - Trains with random particle deletion augmentation
 - No early stopping; uses learning rate decay
@@ -348,10 +256,9 @@ python3 -m siamese.siamese
 
 **For Dataset 2:**
 ```bash
-python3 -m siamese.siamese --config set2
+python3 -m siamese.siamese --config config_set2.yaml
 ```
 
-**What it does:**
 - Self-supervised pretraining using SimCLR
 - Creates augmented view pairs (original + transformed)
 - Learns representations by maximizing agreement between views
@@ -378,10 +285,9 @@ python3 -m siamese.train_finetune
 
 **For Dataset 2:**
 ```bash
-python3 -m siamese.train_finetune --config set2
+python3 -m siamese.train_finetune --config config_set2.yaml
 ```
 
-**What it does:**
 - Loads pretrained encoder from Step 1
 - Progressive finetuning:
   - Epochs 0 to `DOWNSTREAM_FREEZE_EPOCH`: Encoder trainable with low LR
@@ -406,10 +312,9 @@ python3 -m siamese.train_no_finetune
 
 **For Dataset 2:**
 ```bash
-python3 -m siamese.train_no_finetune --config set2
+python3 -m siamese.train_no_finetune --config config_set2.yaml
 ```
 
-**What it does:**
 - Loads pretrained encoder and keeps it frozen
 - Only trains downstream regression head
 - Faster training; tests pure representation quality
@@ -428,7 +333,6 @@ python3 -m lorentz_addition.lorentz_addition
 python3 -m lorentz_addition.lorentz_addition_set2
 ```
 
-**What it does:**
 - Applies physics-based approach (no ML)
 - Sums 4-momentum vectors of all visible particles
 - Assumes MET pseudorapidity = 0
@@ -459,7 +363,7 @@ python3 -m model_evaluation.same_event_type
 
 **For Dataset 2:**
 ```bash
-python3 -m model_evaluation.same_event_type --config set2
+python3 -m model_evaluation.same_event_type --config config_set2.yaml
 ```
 
 **What it does:**
@@ -494,7 +398,7 @@ python3 -m model_evaluation.full_dataset
 
 **For Dataset 2:**
 ```bash
-python3 -m model_evaluation.full_dataset --config set2
+python3 -m model_evaluation.full_dataset --config config_set2.yaml
 ```
 
 **What it does:**
@@ -524,8 +428,8 @@ python3 -m model_evaluation.transformed_full_dataset
 
 **For Dataset 2:**
 ```bash
-python3 -m model_evaluation.transformed_same_event_type --config set2
-python3 -m model_evaluation.transformed_full_dataset --config set2
+python3 -m model_evaluation.transformed_same_event_type --config config_set2.yaml
+python3 -m model_evaluation.transformed_full_dataset --config config_set2.yaml
 ```
 
 **What it does:**
@@ -552,13 +456,8 @@ Tests models on background (non-SUSY) events:
 python3 -m model_evaluation.background_test
 ```
 
-**For Dataset 2:**
-```bash
-python3 -m model_evaluation.background_test --config set2
-```
 
-**What it does:**
-- Applies all trained models to Standard Model background events
+- Applies trained models to Standard Model background events
 - Creates pairwise comparison histograms between models
 - Ideal models should show distinctive predictions for background vs. signal
 - Helps assess whether models learned physics or just overfitted
@@ -572,27 +471,6 @@ model_evaluation/
     └── ...
 ```
 
-### Understanding Evaluation Outputs
-
-**Metrics in JSON files:**
-- `mse`: Mean Squared Error
-- `rmse`: Root Mean Squared Error
-- `mae`: Mean Absolute Error
-- `r2`: R² coefficient of determination
-- `avg_relative_error`: Average relative error (|predicted - true| / true)
-- `median_relative_error`: Median relative error
-
-**Dual histograms:**
-- Blue: True mass distribution
-- Orange: Predicted mass distribution
-- Vertical lines: Mean values
-- Inset text: Performance metrics
-
-**Accuracy plots:**
-- X-axis: Different event types (or mass values)
-- Y-axis: Performance metric (MAE, RMSE, or R²)
-- Multiple lines: Different models for comparison
-
 ---
 
 ## Background Data Functionality
@@ -603,55 +481,6 @@ Background data consists of Standard Model physics events (non-SUSY processes) u
 - Testing if models learned genuine physics patterns vs. overfitting
 - Assessing generalization to out-of-distribution data
 - Validating that models don't produce spurious predictions on background
-
-### Data Structure
-
-**Raw data:**
-```
-raw_data_background/
-└── test_TbqqTblv.root          # Top quark pair production events
-```
-
-**Preprocessed data:**
-```
-processed_data_background/
-└── test_TbqqTblv.npz
-```
-
-### Preprocessing Background Data
-
-**For Dataset 1:**
-```bash
-python3 preprocess_data_background.py
-```
-
-**For Dataset 2:**
-```bash
-python3 preprocess_data_background.py --dataset set2
-```
-
-**What it does:**
-- Extracts features from two separate decay chains (P1 and P2)
-- Combines specific particles from each chain
-- Formats data identically to signal data (same shape, same features)
-- No target mass labels (background events don't contain SUSY particles)
-
-### Evaluating on Background Data
-
-```bash
-python3 -m model_evaluation.background_test
-python3 -m model_evaluation.background_test --config set2
-```
-
-**Interpretation:**
-- Models trained on SUSY signal should produce different predictions for background
-- Consistent predictions between signal and background may indicate overfitting
-- Distribution shape differences help assess model discriminative power
-
-**Outputs:**
-- Pairwise comparison histograms between all model combinations
-- Shows how different models respond to non-SUSY events
-- Saved to `model_evaluation/background_plots/`
 
 ---
 
@@ -666,19 +495,9 @@ RUN_ID: 3
 
 This creates directories like `model_3/`, `model_3_finetune/`, etc. Increment this value to train new model versions without overwriting previous runs.
 
-### Dataset Selection
-
-Most scripts accept `--config set2` or `--dataset set2` to use Dataset 2:
-```bash
-python3 -m gnn_baseline.gnn --config set2
-python3 preprocess_data.py --dataset set2
-```
-
-Without this flag, Dataset 1 (config.yaml) is used by default.
-
 ### Data Scalers
 
-Models save `StandardScaler` objects during training:
+The GNN Baseline Model saves `StandardScaler` objects during training:
 - `x_scaler_0.pkl`, `x_scaler_1.pkl`, `x_scaler_2.pkl`: Scale pt, eta, phi features
 - `y_scaler.pkl`: Scale target mass values
 
